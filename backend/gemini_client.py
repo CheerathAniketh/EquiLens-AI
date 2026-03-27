@@ -1,0 +1,131 @@
+import json
+import os
+import re
+from dotenv import load_dotenv
+from google import genai
+
+load_dotenv()
+
+client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
+
+PERSONAS = {
+    "student":  "a student learning about AI fairness for the first time",
+    "ngo":      "an NGO worker with no technical background who needs to act on this",
+    "policy":   "a policy maker concerned about legal and ethical risk",
+    "general":  "a general audience with no technical background",
+}
+
+
+def _is_quota_error(e: Exception) -> bool:
+    return "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e)
+
+
+def _fallback_explanation(bias_report) -> str:
+    di = bias_report.get("di", 0)
+    spd = bias_report.get("spd", 0)
+    severity = bias_report.get("severity", "unknown")
+    groups = bias_report.get("group_stats", {})
+
+    group_lines = ""
+    if groups:
+        sorted_groups = sorted(groups.items(), key=lambda x: x[1]["positive_rate"])
+        least = sorted_groups[0]
+        most = sorted_groups[-1]
+        group_lines = (
+            f"The most favored group is '{most[0]}' with an approval rate of "
+            f"{most[1]['positive_rate']*100:.1f}%, while '{least[0]}' has only "
+            f"{least[1]['positive_rate']*100:.1f}%."
+        )
+
+    return (
+        f"This dataset shows {'significant' if di < 0.8 else 'no significant'} bias. "
+        f"The Disparate Impact Ratio is {di:.3f} "
+        f"({'below' if di < 0.8 else 'above'} the legal threshold of 0.80), "
+        f"and the outcome gap between groups is {spd*100:.1f} percentage points. "
+        f"Severity: {severity.upper()}. {group_lines}\n\n"
+        f"{'This level of disparity means equally qualified people are being treated differently based on a protected attribute. '
+           'In a hiring context, this could mean qualified candidates are being rejected due to gender, race, or other protected characteristics. '
+           if di < 0.8 else 'The model appears to be treating groups fairly based on these metrics.'}\n\n"
+        f"To address this: first, review and remove any proxy features that indirectly encode the sensitive attribute. "
+        f"Second, retrain the model on a rebalanced dataset where all groups have equal representation in positive outcomes."
+    )
+
+
+def _fallback_fixes(bias_report, shap_data) -> list:
+    features = shap_data.get("top_features", [])
+    proxy_keywords = ["gap", "zip", "cost", "insurance", "prestige", "address"]
+    proxies = [f["feature"] for f in features if any(p in f["feature"].lower() for p in proxy_keywords)]
+
+    fixes = []
+    if proxies:
+        fixes.append(f"Remove or replace proxy features: {', '.join(proxies)} — these correlate with the sensitive attribute and cause indirect discrimination.")
+    fixes.append("Rebalance your training dataset so all demographic groups have equal representation in positive outcomes.")
+    fixes.append("Apply post-processing threshold calibration to equalize false positive and false negative rates across groups.")
+    return fixes[:3]
+
+
+def _parse_json(text: str):
+    cleaned = re.sub(r"```(?:json)?", "", text).strip().strip("`").strip()
+    return json.loads(cleaned)
+
+
+def explain_results(bias_report, shap_data, audience="ngo"):
+    persona = PERSONAS.get(audience, PERSONAS["ngo"])
+
+    prompt = f"""
+You are an AI fairness expert explaining bias analysis results to {persona}.
+
+Here is what was found:
+- Groups analyzed: {bias_report['group_stats']}
+- Disparate Impact Ratio: {bias_report['di']} (below 0.8 means discriminatory)
+- Statistical Parity Difference: {bias_report['spd']} (above 0.1 means biased)
+- Severity: {bias_report['severity']}
+- Most influential features: {shap_data['top_features']}
+
+Write exactly 3 short paragraphs:
+1. What bias was found and which group is most affected
+2. Why this matters in real life with one concrete example
+3. Two specific actions to fix this bias
+
+Rules:
+- No technical jargon
+- No bullet points inside paragraphs
+- Plain simple language only
+- Keep each paragraph under 4 sentences
+"""
+
+    try:
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=prompt
+        )
+        return response.text
+    except Exception as e:
+        if _is_quota_error(e):
+            return _fallback_explanation(bias_report)
+        raise e
+
+
+def suggest_fixes(bias_report, shap_data):
+    prompt = f"""
+Given this bias analysis: {bias_report}
+And these influential features: {shap_data['top_features']}
+
+Suggest exactly 3 specific actionable fixes.
+Return a JSON array only. No markdown, no backticks, no explanation.
+Example format: ["fix 1", "fix 2", "fix 3"]
+"""
+
+    try:
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=prompt
+        )
+        try:
+            return _parse_json(response.text)
+        except (ValueError, json.JSONDecodeError):
+            return _fallback_fixes(bias_report, shap_data)
+    except Exception as e:
+        if _is_quota_error(e):
+            return _fallback_fixes(bias_report, shap_data)
+        raise e

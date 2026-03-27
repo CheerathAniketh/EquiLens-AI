@@ -1,0 +1,23 @@
+# virtual env
+venv/
+env/
+
+# python stuff
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# env files
+.env
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# logs
+*.log

@@ -1,0 +1,57 @@
+from fastapi import FastAPI, UploadFile, File
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+import pandas as pd
+
+from analyzer import analyze_bias
+from trainer import train_and_evaluate
+from explainer import get_shap_values
+from gemini_client import explain_results, suggest_fixes
+
+app = FastAPI(title="EquiLens AI")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+@app.post("/analyze")
+async def analyze(
+    file: UploadFile = File(...),
+    target_col: str = "",
+    sensitive_col: str = "",
+    audience: str = "ngo",
+):
+    df = pd.read_csv(file.file)
+
+    stats = analyze_bias(df, target_col, sensitive_col)
+    model, X_train, X_test, y_test = train_and_evaluate(df, target_col, sensitive_col)
+    shap_data = get_shap_values(model, X_train, X_test)
+
+    try:
+        explanation = explain_results(stats, shap_data, audience=audience)
+    except Exception as e:
+        explanation = f"Gemini unavailable: {str(e)}"
+
+    try:
+        fixes = suggest_fixes(stats, shap_data)
+    except Exception as e:
+        fixes = [
+            "Rebalance your dataset so all groups have equal representation.",
+            "Remove proxy features that correlate with the sensitive attribute.",
+            "Collect more representative data from underrepresented groups.",
+        ]
+
+    return {
+        "stats": stats,
+        "shap": shap_data,
+        "explanation": explanation,
+        "fixes": fixes,
+    }
+
+
+# Mount frontend LAST — after all API routes
+app.mount("/", StaticFiles(directory="../frontend", html=True), name="frontend")

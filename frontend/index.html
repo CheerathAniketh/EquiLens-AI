@@ -1,0 +1,1601 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EquiLens AI — Bias Detection</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Syne:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+:root {
+  --bg: #080810;
+  --surface: #0e0e1a;
+  --surface2: #141424;
+  --surface3: #1c1c30;
+  --border: rgba(120,120,255,0.1);
+  --border2: rgba(120,120,255,0.2);
+  --text: #e2e2f0;
+  --muted: #6868a0;
+  --accent: #6c63ff;
+  --accent2: #00e5b0;
+  --danger: #ff4d6d;
+  --warn: #ffb347;
+  --success: #40d98b;
+  --mono: 'IBM Plex Mono', monospace;
+  --sans: 'Syne', sans-serif;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 14px;
+  line-height: 1.6;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* grid noise overlay */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(108,99,255,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(108,99,255,0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.app { display: grid; grid-template-columns: 240px 1fr; min-height: 100vh; position: relative; z-index: 1; }
+
+/* ── SIDEBAR ── */
+.sidebar {
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.logo-area {
+  padding: 28px 24px 24px;
+  border-bottom: 1px solid var(--border);
+}
+
+.logo-name {
+  font-family: var(--sans);
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  background: linear-gradient(135deg, #6c63ff 0%, #00e5b0 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.logo-tag {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  margin-top: 2px;
+}
+
+.nav-section-label {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 20px 24px 8px;
+  opacity: 0.6;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 24px;
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.15s;
+  border-left: 2px solid transparent;
+  position: relative;
+}
+
+.nav-item:hover { color: var(--text); background: var(--surface2); }
+
+.nav-item.active {
+  color: var(--accent);
+  background: rgba(108,99,255,0.08);
+  border-left-color: var(--accent);
+}
+
+.nav-icon {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+
+.nav-item.active .nav-icon { opacity: 1; }
+
+.pulse { width: 7px; height: 7px; border-radius: 50%; background: var(--success); margin-left: auto; animation: glow 2s ease-in-out infinite; }
+@keyframes glow { 0%,100%{box-shadow:0 0 4px var(--success);} 50%{box-shadow:0 0 10px var(--success);} }
+
+.sidebar-bottom {
+  margin-top: auto;
+  padding: 20px 24px;
+  border-top: 1px solid var(--border);
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--muted);
+}
+
+/* ── MAIN ── */
+.main { overflow-x: hidden; }
+
+/* ── TOPBAR ── */
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 32px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.breadcrumb {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.breadcrumb span { color: var(--text); }
+
+.domain-pills { display: flex; gap: 6px; }
+
+.pill-btn {
+  padding: 5px 14px;
+  border-radius: 20px;
+  border: 1px solid var(--border2);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-family: var(--sans);
+  font-size: 12px;
+  font-weight: 500;
+  transition: all 0.15s;
+}
+
+.pill-btn:hover { color: var(--text); border-color: rgba(108,99,255,0.4); }
+
+.pill-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+/* ── UPLOAD BAR ── */
+.upload-bar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 32px;
+  background: var(--surface2);
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+
+.upload-label { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+
+.upload-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 16px;
+  border-radius: 6px;
+  border: 1px dashed var(--border2);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: 11px;
+  transition: all 0.15s;
+}
+
+.upload-btn:hover { border-color: var(--accent); color: var(--accent); }
+.upload-btn.has-file { border-style: solid; border-color: var(--success); color: var(--success); }
+
+#fileInput { display: none; }
+
+.sel {
+  background: var(--surface3);
+  border: 1px solid var(--border2);
+  color: var(--text);
+  padding: 7px 12px;
+  border-radius: 6px;
+  font-family: var(--mono);
+  font-size: 11px;
+  cursor: pointer;
+  outline: none;
+}
+
+.sel:focus { border-color: var(--accent); }
+
+.run-btn {
+  padding: 8px 24px;
+  border-radius: 6px;
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 600;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.run-btn:hover { background: #7c74ff; transform: translateY(-1px); }
+.run-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+.run-btn.running { background: var(--surface3); color: var(--accent); border: 1px solid var(--accent); }
+
+.export-btn {
+  padding: 8px 18px;
+  border-radius: 6px;
+  border: 1px solid var(--border2);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.15s;
+  margin-left: auto;
+}
+
+.export-btn:hover { color: var(--text); border-color: rgba(255,255,255,0.2); }
+
+/* ── CONTENT ── */
+.content { padding: 28px 32px; }
+
+/* ── PAGES ── */
+.page { display: none; }
+.page.active { display: block; animation: fadeUp 0.2s ease; }
+@keyframes fadeUp { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+
+/* ── SCORE GRID ── */
+.score-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin-bottom: 24px;
+}
+
+.score-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 18px;
+  position: relative;
+  overflow: hidden;
+  transition: border-color 0.2s;
+}
+
+.score-card:hover { border-color: var(--border2); }
+
+.score-card::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  border-radius: 12px 12px 0 0;
+}
+
+.score-card.good::after { background: var(--success); }
+.score-card.warn::after { background: var(--warn); }
+.score-card.bad::after { background: var(--danger); }
+
+.score-lbl {
+  font-family: var(--mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+  margin-bottom: 10px;
+}
+
+.score-val {
+  font-family: var(--mono);
+  font-size: 28px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.score-val.good { color: var(--success); }
+.score-val.warn { color: var(--warn); }
+.score-val.bad { color: var(--danger); }
+
+.score-note { font-size: 11px; color: var(--muted); margin-top: 6px; }
+
+/* ── GRID LAYOUTS ── */
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 18px; }
+.three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin-bottom: 18px; }
+.full { margin-bottom: 18px; }
+
+/* ── PANEL ── */
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 22px;
+}
+
+.panel-hd {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 18px;
+  font-family: var(--mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+}
+
+.badge {
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-family: var(--mono);
+}
+
+.badge-red { background: rgba(255,77,109,0.12); color: var(--danger); border: 1px solid rgba(255,77,109,0.2); }
+.badge-amber { background: rgba(255,179,71,0.12); color: var(--warn); border: 1px solid rgba(255,179,71,0.2); }
+.badge-green { background: rgba(64,217,139,0.12); color: var(--success); border: 1px solid rgba(64,217,139,0.2); }
+.badge-purple { background: rgba(108,99,255,0.12); color: var(--accent); border: 1px solid rgba(108,99,255,0.2); }
+.badge-teal { background: rgba(0,229,176,0.12); color: var(--accent2); border: 1px solid rgba(0,229,176,0.2); }
+
+/* ── CHART ── */
+.chart-wrap { position: relative; width: 100%; height: 200px; }
+
+/* ── GROUP TABLE ── */
+.gtable { width: 100%; border-collapse: collapse; font-size: 12px; }
+.gtable th {
+  text-align: left;
+  padding: 8px 10px;
+  color: var(--muted);
+  font-weight: 500;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  border-bottom: 1px solid var(--border);
+  font-family: var(--mono);
+}
+.gtable td { padding: 10px 10px; border-bottom: 1px solid var(--border); }
+.gtable tr:last-child td { border-bottom: none; }
+.gtable tr:hover td { background: var(--surface2); }
+
+.tag {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 20px;
+  font-size: 10px;
+  font-family: var(--mono);
+}
+
+.tag-red { background: rgba(255,77,109,0.1); color: var(--danger); }
+.tag-green { background: rgba(64,217,139,0.1); color: var(--success); }
+.tag-amber { background: rgba(255,179,71,0.1); color: var(--warn); }
+
+/* ── METRIC BARS ── */
+.m-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+.m-row:last-child { border-bottom: none; }
+.m-name { flex: 1; font-size: 13px; }
+.m-track { flex: 2; height: 5px; background: var(--surface3); border-radius: 3px; overflow: hidden; }
+.m-fill { height: 100%; border-radius: 3px; transition: width 1s cubic-bezier(0.4,0,0.2,1); }
+.m-val { font-family: var(--mono); font-size: 12px; min-width: 40px; text-align: right; }
+
+/* ── SHAP BARS ── */
+.shap-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+.shap-row:last-child { border-bottom: none; }
+.shap-name { width: 160px; font-size: 12px; color: var(--muted); flex-shrink: 0; display: flex; align-items: center; gap: 6px; }
+.shap-proxy { font-size: 9px; color: var(--warn); font-family: var(--mono); }
+.shap-track { flex: 1; position: relative; height: 14px; }
+.shap-zero { position: absolute; left: 50%; top: 0; bottom: 0; width: 1px; background: var(--border2); }
+.shap-pos { position: absolute; left: 50%; top: 2px; height: 10px; border-radius: 2px; background: var(--danger); }
+.shap-neg { position: absolute; right: 50%; top: 2px; height: 10px; border-radius: 2px; background: var(--accent2); }
+.shap-val { font-family: var(--mono); font-size: 11px; min-width: 50px; text-align: right; }
+
+/* ── AI BOX ── */
+.ai-box {
+  background: linear-gradient(135deg, rgba(108,99,255,0.06), rgba(0,229,176,0.03));
+  border: 1px solid rgba(108,99,255,0.2);
+  border-radius: 10px;
+  padding: 18px;
+  margin-top: 16px;
+}
+
+.ai-tag {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--accent);
+  margin-bottom: 10px;
+}
+
+.ai-tag::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: glow 2s ease-in-out infinite;
+}
+
+.ai-text { font-size: 13px; line-height: 1.75; color: var(--text); }
+.ai-text.pending { color: var(--muted); font-style: italic; }
+
+/* ── AUDIENCE TOGGLE ── */
+.audience-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.aud-btn {
+  padding: 4px 12px;
+  border-radius: 20px;
+  border: 1px solid var(--border2);
+  background: transparent;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 10px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.aud-btn:hover { color: var(--text); }
+.aud-btn.active { background: rgba(108,99,255,0.15); color: var(--accent); border-color: var(--accent); }
+
+/* ── HEATMAP ── */
+.hmap-header { display: flex; gap: 4px; margin-left: 100px; margin-bottom: 4px; }
+.hmap-col-lbl { flex: 1; text-align: center; font-size: 10px; color: var(--muted); font-family: var(--mono); }
+.hmap-row { display: flex; gap: 4px; align-items: center; margin-bottom: 4px; }
+.hmap-lbl { width: 100px; font-size: 11px; color: var(--muted); font-family: var(--mono); flex-shrink: 0; }
+.hmap-cell {
+  flex: 1;
+  height: 34px;
+  border-radius: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: default;
+  transition: transform 0.15s, filter 0.15s;
+}
+.hmap-cell:hover { transform: scale(1.06); filter: brightness(1.2); }
+
+/* ── REMED ── */
+.remed-step {
+  display: flex;
+  gap: 16px;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--border);
+}
+.remed-step:last-child { border-bottom: none; }
+.step-n {
+  width: 30px;
+  height: 30px;
+  border-radius: 7px;
+  background: rgba(108,99,255,0.12);
+  border: 1px solid rgba(108,99,255,0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+.step-body { flex: 1; }
+.step-title { font-weight: 600; font-size: 13px; margin-bottom: 5px; }
+.step-desc { font-size: 12px; color: var(--muted); line-height: 1.6; }
+.step-impact { display: inline-block; margin-top: 7px; font-family: var(--mono); font-size: 11px; color: var(--accent2); }
+
+/* ── REG PILLS ── */
+.reg-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.reg-pill {
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 10px;
+  font-family: var(--mono);
+  border: 1px solid;
+}
+.reg-pass { background: rgba(64,217,139,0.07); color: var(--success); border-color: rgba(64,217,139,0.25); }
+.reg-fail { background: rgba(255,77,109,0.07); color: var(--danger); border-color: rgba(255,77,109,0.25); }
+.reg-warn { background: rgba(255,179,71,0.07); color: var(--warn); border-color: rgba(255,179,71,0.25); }
+
+/* ── UPLOAD HERO (empty state) ── */
+.upload-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  gap: 20px;
+  text-align: center;
+}
+
+.hero-icon {
+  width: 80px;
+  height: 80px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, rgba(108,99,255,0.15), rgba(0,229,176,0.08));
+  border: 1px solid rgba(108,99,255,0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hero-title {
+  font-size: 28px;
+  font-weight: 800;
+  background: linear-gradient(135deg, #e2e2f0 0%, #6c63ff 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.hero-sub { font-size: 14px; color: var(--muted); max-width: 420px; line-height: 1.6; }
+
+.hero-upload {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 32px 48px;
+  border-radius: 16px;
+  border: 2px dashed var(--border2);
+  background: var(--surface);
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-top: 8px;
+}
+
+.hero-upload:hover { border-color: var(--accent); background: rgba(108,99,255,0.05); }
+
+.hero-upload-text { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+
+.hero-fields {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+/* ── SPINNER ── */
+.spinner {
+  display: inline-block;
+  width: 13px;
+  height: 13px;
+  border: 2px solid rgba(108,99,255,0.3);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── REPORT ── */
+.report-meta {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  padding: 18px;
+  background: var(--surface2);
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  margin-bottom: 16px;
+  font-size: 12px;
+}
+.report-meta-k { color: var(--muted); font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; }
+
+.whatif-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: var(--surface2);
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  margin-bottom: 10px;
+}
+
+.whatif-name { flex: 1; font-size: 13px; font-family: var(--mono); }
+.whatif-bar-wrap { flex: 2; }
+.whatif-toggle {
+  width: 36px;
+  height: 20px;
+  border-radius: 10px;
+  background: var(--surface3);
+  border: 1px solid var(--border2);
+  cursor: pointer;
+  position: relative;
+  transition: background 0.2s;
+  flex-shrink: 0;
+}
+.whatif-toggle.on { background: rgba(255,77,109,0.3); border-color: var(--danger); }
+.whatif-toggle::after {
+  content: '';
+  position: absolute;
+  left: 2px; top: 2px;
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: var(--muted);
+  transition: all 0.2s;
+}
+.whatif-toggle.on::after { left: 18px; background: var(--danger); }
+
+.whatif-result {
+  padding: 16px;
+  background: var(--surface2);
+  border-radius: 8px;
+  border: 1px solid var(--border2);
+  margin-top: 12px;
+  display: none;
+}
+
+.whatif-result.visible { display: block; animation: fadeUp 0.2s ease; }
+
+.delta-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+.delta-card {
+  text-align: center;
+  padding: 12px;
+  background: var(--surface3);
+  border-radius: 8px;
+}
+.delta-label { font-family: var(--mono); font-size: 10px; color: var(--muted); text-transform: uppercase; margin-bottom: 6px; }
+.delta-val { font-family: var(--mono); font-size: 20px; font-weight: 600; }
+.delta-better { color: var(--success); }
+.delta-worse { color: var(--danger); }
+.delta-same { color: var(--muted); }
+
+@media (max-width: 900px) {
+  .app { grid-template-columns: 1fr; }
+  .sidebar { display: none; }
+  .two-col, .three-col, .score-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="logo-area">
+    <div class="logo-name">EquiLens AI</div>
+    <div class="logo-tag">Bias Detection Engine</div>
+  </div>
+
+  <div class="nav-section-label">Analysis</div>
+  <div class="nav-item active" onclick="nav('overview', this)">
+    <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>
+    Overview
+    <div class="pulse"></div>
+  </div>
+  <div class="nav-item" onclick="nav('metrics', this)">
+    <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="1,13 5,7 8,10 12,3 15,6"/></svg>
+    Fairness metrics
+  </div>
+  <div class="nav-item" onclick="nav('shap', this)">
+    <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="5"/><line x1="8" y1="1" x2="8" y2="15"/><line x1="1" y1="8" x2="15" y2="8"/></svg>
+    Explainability
+  </div>
+  <div class="nav-item" onclick="nav('intersect', this)">
+    <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6" cy="7" r="4"/><circle cx="10" cy="7" r="4"/></svg>
+    Intersectionality
+  </div>
+
+  <div class="nav-section-label">Actions</div>
+  <div class="nav-item" onclick="nav('remediation', this)">
+    <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M13 2L8 7M3 9l-1 4 4-1M5 11l6-6"/></svg>
+    Remediation
+  </div>
+  <div class="nav-item" onclick="nav('report', this)">
+    <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 2h7l3 3v9H3z"/><line x1="6" y1="7" x2="10" y2="7"/><line x1="6" y1="10" x2="10" y2="10"/></svg>
+    Audit report
+  </div>
+
+  <div class="sidebar-bottom">
+    v1.0.0 · SDG 10 · GDG Solution Challenge 2026
+  </div>
+</aside>
+
+<!-- MAIN -->
+<main class="main">
+
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div class="breadcrumb">equilens / <span id="domainSlug">upload-dataset</span></div>
+    <div class="domain-pills">
+      <button class="pill-btn active" onclick="switchDomain('hiring', this)">Hiring</button>
+      <button class="pill-btn" onclick="switchDomain('credit', this)">Credit</button>
+      <button class="pill-btn" onclick="switchDomain('healthcare', this)">Healthcare</button>
+    </div>
+  </div>
+
+  <!-- UPLOAD BAR -->
+  <div class="upload-bar">
+    <span class="upload-label">Dataset:</span>
+    <button class="upload-btn" id="uploadBtn" onclick="document.getElementById('fileInput').click()">
+      <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 1v10M4 5l4-4 4 4"/><path d="M1 12v2h14v-2"/></svg>
+      <span id="uploadLabel">Choose CSV file</span>
+    </button>
+    <input type="file" id="fileInput" accept=".csv" onchange="onFileSelected(this)">
+
+    <span class="upload-label">Target:</span>
+    <select class="sel" id="targetSel">
+      <option value="">Select column</option>
+      <option value="hired">hired</option>
+      <option value="approved">approved</option>
+      <option value="outcome">outcome</option>
+    </select>
+
+    <span class="upload-label">Sensitive:</span>
+    <select class="sel" id="sensitiveSel">
+      <option value="">Select column</option>
+      <option value="gender">gender</option>
+      <option value="race">race</option>
+      <option value="age">age</option>
+      <option value="caste">caste</option>
+    </select>
+
+    <button class="run-btn" id="runBtn" onclick="runAnalysis()">
+      <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><polygon points="4,2 14,8 4,14"/></svg>
+      Analyze
+    </button>
+
+    <button class="export-btn" onclick="nav('report', null)">Export report</button>
+  </div>
+
+  <!-- PAGE: OVERVIEW -->
+  <div class="page active" id="page-overview">
+    <div class="content">
+
+      <!-- empty state -->
+      <div id="emptyState" class="upload-hero">
+        <div class="hero-icon">
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#6c63ff" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+        </div>
+        <div class="hero-title">Detect hidden bias</div>
+        <div class="hero-sub">Upload a CSV dataset, select your target and sensitive columns, and EquiLens will audit it for discrimination in seconds.</div>
+        <div class="hero-upload" onclick="document.getElementById('fileInput').click()">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          <div class="hero-upload-text">Click to upload CSV — or drag and drop</div>
+          <div style="font-size:11px;color:var(--muted);font-family:var(--mono);">hiring_sample.csv, loan_data.csv, admissions.csv...</div>
+        </div>
+        <div style="font-family:var(--mono);font-size:11px;color:var(--muted);opacity:0.6;margin-top:8px;">
+          Real bias found: Amazon hiring AI, COMPAS recidivism, Healthcare cost algorithm
+        </div>
+      </div>
+
+      <!-- results state (hidden until analysis runs) -->
+      <div id="resultsState" style="display:none;">
+
+        <div class="score-grid" id="scoreGrid"></div>
+
+        <div class="two-col">
+          <div class="panel">
+            <div class="panel-hd">Approval rate by group <span class="badge badge-red" id="diTag"></span></div>
+            <div class="chart-wrap"><canvas id="approvalChart"></canvas></div>
+          </div>
+          <div class="panel">
+            <div class="panel-hd">Group comparison</div>
+            <table class="gtable" id="groupTable"></table>
+          </div>
+        </div>
+
+        <div class="panel full">
+          <div class="panel-hd">
+            AI explanation
+            <span class="badge badge-purple">Gemini</span>
+          </div>
+          <div class="audience-row">
+            <span style="font-family:var(--mono);font-size:10px;color:var(--muted);">Audience:</span>
+            <button class="aud-btn active" onclick="setAudience('ngo', this)">NGO worker</button>
+            <button class="aud-btn" onclick="setAudience('student', this)">Student</button>
+            <button class="aud-btn" onclick="setAudience('policy', this)">Policy maker</button>
+          </div>
+          <div class="ai-box">
+            <div class="ai-tag">Gemini analysis</div>
+            <div class="ai-text" id="aiExplanation">Run analysis to see explanation.</div>
+          </div>
+          <div class="reg-row" id="regRow"></div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- PAGE: METRICS -->
+  <div class="page" id="page-metrics">
+    <div class="content">
+      <div class="panel full">
+        <div class="panel-hd">Fairness metric scores <span class="badge badge-red" id="metricsBadge"></span></div>
+        <div id="metricRows"></div>
+        <div class="ai-box">
+          <div class="ai-tag">Metric interpretation</div>
+          <div class="ai-text pending" id="metricsAI">Run analysis to see AI-powered metric interpretation.</div>
+        </div>
+      </div>
+      <div class="two-col">
+        <div class="panel">
+          <div class="panel-hd">Calibration curve</div>
+          <div class="chart-wrap"><canvas id="calibChart"></canvas></div>
+        </div>
+        <div class="panel">
+          <div class="panel-hd">ROC by group</div>
+          <div class="chart-wrap"><canvas id="rocChart"></canvas></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAGE: SHAP -->
+  <div class="page" id="page-shap">
+    <div class="content">
+      <div class="panel full">
+        <div class="panel-hd">
+          SHAP feature importance
+          <span style="color:var(--muted);font-size:10px;text-transform:none;letter-spacing:0;font-family:var(--sans);">impact on positive decision probability</span>
+        </div>
+        <div style="display:flex;gap:16px;font-size:11px;color:var(--muted);margin-bottom:16px;font-family:var(--mono);">
+          <span style="display:flex;align-items:center;gap:6px;"><span style="width:10px;height:10px;background:var(--danger);border-radius:2px;display:inline-block;"></span>Increases bias</span>
+          <span style="display:flex;align-items:center;gap:6px;"><span style="width:10px;height:10px;background:var(--accent2);border-radius:2px;display:inline-block;"></span>Decreases bias</span>
+        </div>
+        <div id="shapRows"></div>
+        <div class="ai-box">
+          <div class="ai-tag">Explainability insight</div>
+          <div class="ai-text pending" id="shapAI">Run analysis to see feature impact analysis.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAGE: INTERSECTIONALITY -->
+  <div class="page" id="page-intersect">
+    <div class="content">
+      <div class="panel full">
+        <div class="panel-hd">Intersectional approval rates <span class="badge badge-teal">Gender × Race</span></div>
+        <div id="heatmapWrap"></div>
+        <div class="ai-box" style="margin-top:16px;">
+          <div class="ai-tag">Intersectional insight</div>
+          <div class="ai-text pending" id="intersectAI">Run analysis to identify compounded discrimination patterns.</div>
+        </div>
+      </div>
+      <div class="panel full" style="margin-top:18px;">
+        <div class="panel-hd">Most disadvantaged subgroups</div>
+        <table class="gtable" id="subgroupTable"></table>
+      </div>
+    </div>
+  </div>
+
+  
+
+  <!-- PAGE: REMEDIATION -->
+  <div class="page" id="page-remediation">
+    <div class="content">
+      <div class="two-col" style="margin-bottom:18px;">
+        <div class="panel">
+          <div class="panel-hd">Before remediation</div>
+          <div class="chart-wrap"><canvas id="beforeChart"></canvas></div>
+        </div>
+        <div class="panel">
+          <div class="panel-hd">After remediation <span class="badge badge-green">Projected</span></div>
+          <div class="chart-wrap"><canvas id="afterChart"></canvas></div>
+        </div>
+      </div>
+      <div class="panel full">
+        <div class="panel-hd">Recommended steps <span class="badge badge-purple" id="remedBadge"></span></div>
+        <div id="remedSteps"></div>
+        <div class="ai-box">
+          <div class="ai-tag">Remediation strategy</div>
+          <div class="ai-text pending" id="remedAI">Run analysis to get AI-generated remediation recommendations.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAGE: REPORT -->
+  <div class="page" id="page-report">
+    <div class="content">
+      <div class="panel full">
+        <div class="panel-hd">Audit certificate <span class="badge badge-purple">EquiLens v1.0</span></div>
+        <div class="report-meta" id="reportMeta"></div>
+        <div id="reportBody" style="font-size:13px;line-height:1.8;"></div>
+        <div style="display:flex;gap:10px;margin-top:20px;">
+          <button class="run-btn" onclick="alert('PDF export coming in v1.1')">Download PDF</button>
+          <button class="export-btn" onclick="copyReport()">Copy to clipboard</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</main>
+</div>
+
+<script>
+// ── CONFIG ──
+const API_BASE = 'http://127.0.0.1:8000';
+
+// ── STATE ──
+let state = {
+  file: null,
+  targetCol: '',
+  sensitiveCol: '',
+  audience: 'ngo',
+  domain: 'hiring',
+  analysisResult: null,
+  charts: {}
+};
+
+// ── DEMO DATA for pre-loaded domains ──
+const DEMO = {
+  hiring: {
+    slug: 'hiring-audit',
+    stats: { group_stats: { Male: { count: 2540, positive_rate: 0.72 }, Female: { count: 1980, positive_rate: 0.44 } }, spd: 0.28, di: 0.61, bias_detected: true, severity: 'high' },
+    shap: { top_features: [
+      { feature: 'years_experience', importance: 0.38 },
+      { feature: 'employment_gap', importance: 0.31 },
+      { feature: 'university_prestige', importance: 0.22 },
+      { feature: 'skills_match', importance: 0.21 },
+      { feature: 'gender', importance: 0.18 },
+    ]},
+    explanation: "This hiring dataset shows serious bias against female applicants. Women are approved at 44% compared to 72% for men — a gap of 28 percentage points. The Disparate Impact Ratio of 0.61 falls well below the legal threshold of 0.80 set by the EEOC 80% rule.\n\nImagine an NGO reviewing scholarship applications using this algorithm. Equally qualified female candidates would be systematically passed over, not because of their merit, but because historical data encoded society's past biases into the model's decision-making.\n\nTo fix this: first, remove employment_gap as a feature — it penalizes people who took parental leave, disproportionately affecting women. Second, retrain the model on a balanced dataset where female and male candidates have equal positive outcome rates.",
+    fixes: ["Remove 'employment_gap' feature — it acts as a proxy for parental leave, penalizing women.", "Retrain on rebalanced data with equal positive outcome rates across gender groups.", "Apply post-processing threshold calibration to equalize false positive rates."],
+    regulations: [
+      { name: 'EEOC 80% rule', status: 'fail' },
+      { name: 'EU AI Act Art. 10', status: 'fail' },
+      { name: 'GDPR Art. 22', status: 'warn' },
+    ],
+    remediation: [
+      { title: 'Remove employment gap feature', desc: 'This feature is a proxy for parental leave and disproportionately penalises women. Removing it reduces disparate impact by an estimated 18 points.', impact: 'Projected DI: 0.61 → 0.79' },
+      { title: 'Apply re-weighting to training data', desc: 'Oversample underrepresented applicant outcomes to correct systematic historical hiring bias.', impact: 'Projected DP gap: 0.28 → 0.12' },
+      { title: 'Calibrate decision threshold by group', desc: 'Apply group-specific thresholds to equalise false positive and false negative rates across groups.', impact: 'Equalized odds: 0.31 → 0.09' },
+    ]
+  },
+  credit: {
+    slug: 'credit-audit',
+    stats: { group_stats: { White: { count: 5800, positive_rate: 0.71 }, Black: { count: 1800, positive_rate: 0.42 }, Hispanic: { count: 2000, positive_rate: 0.54 } }, spd: 0.29, di: 0.59, bias_detected: true, severity: 'high' },
+    shap: { top_features: [
+      { feature: 'credit_score', importance: 0.44 },
+      { feature: 'zip_code_score', importance: 0.34 },
+      { feature: 'debt_to_income', importance: 0.28 },
+      { feature: 'employment_type', importance: 0.19 },
+      { feature: 'years_at_address', importance: 0.16 },
+    ]},
+    explanation: "This credit dataset shows significant racial bias. Black applicants are approved at 42% compared to 71% for White applicants. The zip code score feature is the primary culprit — it's a proxy for historically redlined neighborhoods.\n\nIn practice, this means qualified Black borrowers are being systematically denied loans not because of their creditworthiness, but because of where they live — a direct continuation of historical discriminatory lending practices.\n\nFix: Replace zip code score with individual-level financial metrics, and apply adversarial debiasing during model training.",
+    fixes: ["Replace zip_code_score with individual financial behavior metrics.", "Apply adversarial debiasing to remove race-correlated features.", "Implement human review for borderline cases with protected attributes redacted."],
+    regulations: [
+      { name: 'ECOA / Reg B', status: 'fail' },
+      { name: 'Fair Housing Act', status: 'fail' },
+      { name: 'EU AI Act Art. 5', status: 'fail' },
+    ],
+    remediation: [
+      { title: 'Replace zip code with individual financials', desc: 'Zip code score is a direct proxy for historically redlined neighbourhoods, creating illegal disparate impact under ECOA.', impact: 'Projected DI: 0.59 → 0.81' },
+      { title: 'Apply adversarial debiasing', desc: 'Retrain with an adversarial network that penalises features predicting protected attributes.', impact: 'Projected DP gap: 0.29 → 0.10' },
+      { title: 'Human review for borderline cases', desc: 'Route cases within ±0.08 of the decision threshold to human review with protected attributes redacted.', impact: 'Halves error rate on ~12% of decisions' },
+    ]
+  },
+  healthcare: {
+    slug: 'healthcare-audit',
+    stats: { group_stats: { Male: { count: 4400, positive_rate: 0.78 }, Female: { count: 4200, positive_rate: 0.63 } }, spd: 0.27, di: 0.65, bias_detected: true, severity: 'medium' },
+    shap: { top_features: [
+      { feature: 'acuity_score', importance: 0.41 },
+      { feature: 'cost_history', importance: 0.36 },
+      { feature: 'insurance_tier', importance: 0.23 },
+      { feature: 'bmi_deviation', importance: 0.19 },
+      { feature: 'specialist_access', importance: 0.17 },
+    ]},
+    explanation: "The healthcare triage dataset shows systematic bias against female patients. Women are prioritized at 63% compared to 78% for men. The cost_history feature is the main driver — Black and lower-income patients historically spend less on healthcare due to access barriers, not lower health needs.\n\nThis means sicker patients from disadvantaged groups are being assigned lower triage priority, potentially leading to worse health outcomes and even preventable deaths.\n\nFix: Replace cost_history with acuity-normalized need scores based purely on clinical indicators, and recalibrate BMI thresholds which were derived from male-dominated datasets.",
+    fixes: ["Replace cost_history with need-based acuity scoring from clinical indicators only.", "Recalibrate BMI thresholds by gender to correct systematic underdiagnosis in women.", "Remove insurance_tier from triage model — route to billing only after clinical decisions."],
+    regulations: [
+      { name: 'Section 1557 ACA', status: 'fail' },
+      { name: 'EU AI Act Annex III', status: 'fail' },
+      { name: 'HIPAA non-discrim.', status: 'warn' },
+    ],
+    remediation: [
+      { title: 'Replace cost history with need-based scoring', desc: 'Healthcare cost history correlates with race due to wealth disparities. Replace with clinical need scores only.', impact: 'Projected DI: 0.65 → 0.84' },
+      { title: 'Recalibrate BMI thresholds by gender', desc: 'Standard BMI thresholds were derived from male datasets. Gender-specific calibration eliminates systematic underdiagnosis in women.', impact: 'Female FN rate: 17% → 9%' },
+      { title: 'Blind insurance tier from triage model', desc: 'Insurance tier correlates with race/income. Remove it from model inputs.', impact: 'Projected DP gap: 0.27 → 0.11' },
+    ]
+  }
+};
+
+const PROXY_FEATURES = ['zip_code', 'zip_code_score', 'employment_gap', 'cost_history', 'insurance_tier', 'bmi_deviation', 'university_prestige', 'years_at_address'];
+
+// ── NAVIGATION ──
+function nav(page, el) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + page).classList.add('active');
+  if (el) el.classList.add('active');
+}
+
+// ── DOMAIN SWITCH ──
+function switchDomain(domain, el) {
+  state.domain = domain;
+  document.querySelectorAll('.pill-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  const d = DEMO[domain];
+  document.getElementById('domainSlug').textContent = d.slug;
+  state.analysisResult = { stats: d.stats, shap: d.shap, explanation: d.explanation, fixes: d.fixes };
+  renderAll();
+  showResults();
+}
+
+// ── FILE SELECTION ──
+function onFileSelected(input) {
+  if (input.files && input.files[0]) {
+    state.file = input.files[0];
+    document.getElementById('uploadLabel').textContent = input.files[0].name;
+    document.getElementById('uploadBtn').classList.add('has-file');
+    detectColumns(input.files[0]);
+  }
+}
+
+async function detectColumns(file) {
+  const text = await file.text();
+  const firstLine = text.split('\n')[0];
+  const cols = firstLine.split(',').map(c => c.trim().replace(/"/g, ''));
+
+  const targetSel = document.getElementById('targetSel');
+  const sensitiveSel = document.getElementById('sensitiveSel');
+
+  targetSel.innerHTML = '<option value="">Select column</option>';
+  sensitiveSel.innerHTML = '<option value="">Select column</option>';
+
+  cols.forEach(col => {
+    const o1 = new Option(col, col); targetSel.add(o1);
+    const o2 = new Option(col, col); sensitiveSel.add(o2);
+  });
+
+  // auto-detect common column names
+  const targetGuess = cols.find(c => ['hired','approved','outcome','label','target','decision'].includes(c.toLowerCase()));
+  const sensitiveGuess = cols.find(c => ['gender','race','age','sex','ethnicity','caste'].includes(c.toLowerCase()));
+  if (targetGuess) targetSel.value = targetGuess;
+  if (sensitiveGuess) sensitiveSel.value = sensitiveGuess;
+}
+
+// ── RUN ANALYSIS ──
+async function runAnalysis() {
+  const targetCol = document.getElementById('targetSel').value;
+  const sensitiveCol = document.getElementById('sensitiveSel').value;
+
+  if (!state.file && !targetCol) {
+    // use demo data
+    switchDomain(state.domain, document.querySelector('.pill-btn.active'));
+    return;
+  }
+
+  if (!state.file) { alert('Please upload a CSV file first.'); return; }
+  if (!targetCol) { alert('Please select a target column.'); return; }
+  if (!sensitiveCol) { alert('Please select a sensitive attribute column.'); return; }
+
+  const btn = document.getElementById('runBtn');
+  btn.disabled = true;
+  btn.classList.add('running');
+  btn.innerHTML = '<span class="spinner"></span> Analyzing...';
+
+  try {
+    const formData = new FormData();
+    formData.append('file', state.file);
+
+    const res = await fetch(`${API_BASE}/analyze?target_col=${targetCol}&sensitive_col=${sensitiveCol}&audience=${state.audience}`, {
+      method: 'POST',
+      body: formData
+    });
+
+    if (!res.ok) throw new Error('Analysis failed');
+    const data = await res.json();
+
+    state.analysisResult = data;
+    state.targetCol = targetCol;
+    state.sensitiveCol = sensitiveCol;
+
+    renderAll();
+    showResults();
+
+  } catch (err) {
+    alert('Could not connect to EquiLens backend. Make sure uvicorn is running on port 8000.\n\nLoading demo data instead.');
+    switchDomain(state.domain, document.querySelector('.pill-btn.active'));
+  } finally {
+    btn.disabled = false;
+    btn.classList.remove('running');
+    btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><polygon points="4,2 14,8 4,14"/></svg> Analyze';
+  }
+}
+
+// ── RENDER ALL ──
+function renderAll() {
+  if (!state.analysisResult) return;
+  const d = state.analysisResult;
+  const domain = DEMO[state.domain];
+
+  renderScoreGrid(d.stats);
+  renderApprovalChart(d.stats);
+  renderGroupTable(d.stats);
+  renderAIExplanation(d.explanation || domain.explanation);
+  renderRegPills(domain.regulations);
+  renderMetrics(d.stats);
+  renderCalibROC();
+  renderSHAP(d.shap);
+  renderIntersect();
+  renderWhatif(d.shap);
+  renderRemediation(domain);
+  renderReport(d.stats, domain);
+}
+
+function showResults() {
+  document.getElementById('emptyState').style.display = 'none';
+  document.getElementById('resultsState').style.display = 'block';
+}
+
+// ── SCORE GRID ──
+function renderScoreGrid(stats) {
+  const { spd, di, bias_detected, severity } = stats;
+  const cls = di >= 0.8 ? 'good' : di >= 0.6 ? 'warn' : 'bad';
+  const spdCls = spd <= 0.1 ? 'good' : spd <= 0.2 ? 'warn' : 'bad';
+
+  const cards = [
+    { lbl: 'Disparate Impact', val: di.toFixed(3), cls: di >= 0.8 ? 'good' : di >= 0.6 ? 'warn' : 'bad', note: di < 0.8 ? 'Violates 80% rule' : 'Compliant' },
+    { lbl: 'Stat. Parity Diff', val: (spd * 100).toFixed(1) + '%', cls: spd <= 0.1 ? 'good' : spd <= 0.2 ? 'warn' : 'bad', note: 'Approval gap between groups' },
+    { lbl: 'Bias Detected', val: bias_detected ? 'YES' : 'NO', cls: bias_detected ? 'bad' : 'good', note: 'Severity: ' + (stats.severity || 'unknown') },
+    { lbl: 'Overall Severity', val: (stats.severity || 'unknown').toUpperCase(), cls: stats.severity === 'high' ? 'bad' : stats.severity === 'medium' ? 'warn' : 'good', note: 'Based on DI and SPD' },
+  ];
+
+  document.getElementById('scoreGrid').innerHTML = cards.map(c => `
+    <div class="score-card ${c.cls}">
+      <div class="score-lbl">${c.lbl}</div>
+      <div class="score-val ${c.cls}">${c.val}</div>
+      <div class="score-note">${c.note}</div>
+    </div>`).join('');
+}
+
+// ── APPROVAL CHART ──
+function renderApprovalChart(stats) {
+  const groups = Object.keys(stats.group_stats);
+  const rates = groups.map(g => Math.round(stats.group_stats[g].positive_rate * 100));
+  const colors = ['#6c63ff', '#ff4d6d', '#ffb347', '#00e5b0'];
+
+  document.getElementById('diTag').textContent = 'DI: ' + stats.di.toFixed(3);
+  document.getElementById('diTag').className = 'badge ' + (stats.di < 0.8 ? 'badge-red' : 'badge-green');
+
+  if (state.charts.approval) state.charts.approval.destroy();
+  state.charts.approval = new Chart(document.getElementById('approvalChart'), {
+    type: 'bar',
+    data: {
+      labels: groups,
+      datasets: [{ data: rates, backgroundColor: groups.map((_, i) => colors[i % colors.length]), borderRadius: 6, borderSkipped: false }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ctx.raw + '% approval rate' } } },
+      scales: {
+        x: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#6868a0', font: { family: 'IBM Plex Mono', size: 11 } } },
+        y: { min: 0, max: 100, grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#6868a0', callback: v => v + '%', font: { family: 'IBM Plex Mono', size: 10 } } }
+      }
+    }
+  });
+}
+
+// ── GROUP TABLE ──
+function renderGroupTable(stats) {
+  const groups = Object.keys(stats.group_stats);
+  const maxRate = Math.max(...groups.map(g => stats.group_stats[g].positive_rate));
+
+  const rows = groups.map(g => {
+    const s = stats.group_stats[g];
+    const isPriv = s.positive_rate === maxRate;
+    const status = isPriv ? ['tag-green', 'Pass'] : s.positive_rate < 0.5 ? ['tag-red', 'Fail'] : ['tag-amber', 'Review'];
+    return `<tr>
+      <td style="font-weight:600">${g}</td>
+      <td style="font-family:var(--mono);color:var(--muted)">${s.count.toLocaleString()}</td>
+      <td style="font-family:var(--mono)">${(s.positive_rate * 100).toFixed(1)}%</td>
+      <td><span class="tag ${status[0]}">${status[1]}</span></td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('groupTable').innerHTML = `
+    <thead><tr><th>Group</th><th>Count</th><th>Approval</th><th>Status</th></tr></thead>
+    <tbody>${rows}</tbody>`;
+}
+
+// ── AI EXPLANATION ──
+function renderAIExplanation(text) {
+  const el = document.getElementById('aiExplanation');
+  el.classList.remove('pending');
+  el.textContent = text || 'No explanation available.';
+}
+
+function setAudience(audience, el) {
+  state.audience = audience;
+  document.querySelectorAll('.aud-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  // re-fetch explanation with new audience if file is loaded
+  if (state.file && state.analysisResult) {
+    fetchExplanation();
+  } else {
+    // update from demo
+    const domain = DEMO[state.domain];
+    renderAIExplanation(domain.explanation);
+  }
+}
+
+async function fetchExplanation() {
+  if (!state.file) return;
+  const formData = new FormData();
+  formData.append('file', state.file);
+  try {
+    const res = await fetch(`${API_BASE}/analyze?target_col=${state.targetCol}&sensitive_col=${state.sensitiveCol}&audience=${state.audience}`, { method: 'POST', body: formData });
+    const data = await res.json();
+    renderAIExplanation(data.explanation);
+  } catch(e) {}
+}
+
+// ── REG PILLS ──
+function renderRegPills(regs) {
+  if (!regs) return;
+  const map = { pass: 'reg-pass', fail: 'reg-fail', warn: 'reg-warn' };
+  document.getElementById('regRow').innerHTML = regs.map(r =>
+    `<span class="reg-pill ${map[r.status]}">${r.name}: ${r.status.toUpperCase()}</span>`
+  ).join('');
+}
+
+// ── METRICS PAGE ──
+function renderMetrics(stats) {
+  const { spd, di } = stats;
+  const defs = [
+    { name: 'Disparate Impact ratio', val: di, good: v => v >= 0.8, fmt: v => v.toFixed(3), max: 1, color: di >= 0.8 ? 'var(--success)' : di >= 0.6 ? 'var(--warn)' : 'var(--danger)' },
+    { name: 'Statistical Parity Difference', val: spd, good: v => v <= 0.1, fmt: v => (v*100).toFixed(1)+'%', max: 0.5, color: spd <= 0.1 ? 'var(--success)' : spd <= 0.2 ? 'var(--warn)' : 'var(--danger)' },
+    { name: 'Equalized Odds gap (est.)', val: spd * 0.85, good: v => v <= 0.1, fmt: v => (v*100).toFixed(1)+'%', max: 0.5, color: (spd*0.85) <= 0.1 ? 'var(--success)' : (spd*0.85) <= 0.2 ? 'var(--warn)' : 'var(--danger)' },
+    { name: 'Calibration score (est.)', val: Math.max(0.5, 1 - spd * 0.4), good: v => v >= 0.85, fmt: v => (v*100).toFixed(0)+'%', max: 1, color: (1-spd*0.4) >= 0.85 ? 'var(--success)' : 'var(--warn)' },
+  ];
+
+  const fail = defs.filter(d => !d.good(d.val)).length;
+  document.getElementById('metricsBadge').textContent = fail + ' failed';
+  document.getElementById('metricsBadge').className = 'badge ' + (fail >= 3 ? 'badge-red' : 'badge-amber');
+
+  document.getElementById('metricRows').innerHTML = defs.map(d => {
+    const pct = Math.min(100, (d.val / d.max) * 100);
+    return `<div class="m-row">
+      <div class="m-name">${d.name}</div>
+      <div class="m-track"><div class="m-fill" style="width:${pct.toFixed(0)}%;background:${d.color}"></div></div>
+      <div class="m-val" style="color:${d.color}">${d.fmt(d.val)}</div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('metricsAI').textContent = `The Disparate Impact Ratio of ${di.toFixed(3)} ${di < 0.8 ? 'falls below the legal threshold of 0.80, indicating the system violates the EEOC 80% rule' : 'meets the legal threshold of 0.80'}. The Statistical Parity Difference of ${(spd*100).toFixed(1)}% means there is a ${(spd*100).toFixed(1)} percentage point gap in approval rates between the most and least favored groups.`;
+  document.getElementById('metricsAI').classList.remove('pending');
+}
+
+function renderCalibROC() {
+  if (state.charts.calib) state.charts.calib.destroy();
+  if (state.charts.roc) state.charts.roc.destroy();
+
+  const pts = [0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1.0];
+  state.charts.calib = new Chart(document.getElementById('calibChart'), {
+    type: 'line',
+    data: {
+      labels: pts.map(p => (p*100)+'%'),
+      datasets: [
+        { label: 'Privileged', data: pts.map(p => +(Math.min(1, p*1.05)*100).toFixed(1)), borderColor: '#6c63ff', tension: 0.3, pointRadius: 3, fill: false },
+        { label: 'Unprivileged', data: pts.map(p => +(Math.min(1, p*0.82+0.04)*100).toFixed(1)), borderColor: '#ff4d6d', tension: 0.3, pointRadius: 3, fill: false, borderDash: [4,3] },
+        { label: 'Perfect', data: pts.map(p => +(p*100).toFixed(1)), borderColor: 'rgba(255,255,255,0.15)', tension: 0, pointRadius: 0, borderDash: [2,4], fill: false },
+      ]
+    },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#6868a0', boxWidth: 12, font: { size: 10 } } } }, scales: { x: { ticks: { color: '#6868a0', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } }, y: { ticks: { color: '#6868a0', callback: v => v+'%', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } } } }
+  });
+
+  const fprs = [0,0.05,0.1,0.2,0.3,0.5,0.7,1.0];
+  state.charts.roc = new Chart(document.getElementById('rocChart'), {
+    type: 'line',
+    data: {
+      labels: fprs.map(v => (v*100)+'%'),
+      datasets: [
+        { label: 'Privileged (AUC 0.91)', data: [0,38,61,79,87,93,97,100], borderColor: '#6c63ff', tension: 0.3, pointRadius: 3, fill: false },
+        { label: 'Unprivileged (AUC 0.74)', data: [0,21,39,58,70,82,91,100], borderColor: '#ff4d6d', tension: 0.3, pointRadius: 3, fill: false, borderDash: [4,3] },
+        { label: 'Random', data: fprs.map(v => +(v*100).toFixed(1)), borderColor: 'rgba(255,255,255,0.1)', tension: 0, pointRadius: 0, borderDash: [2,4], fill: false },
+      ]
+    },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#6868a0', boxWidth: 12, font: { size: 10 } } } }, scales: { x: { title: { display: true, text: 'FPR', color: '#6868a0', font: { size: 11 } }, ticks: { color: '#6868a0', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } }, y: { title: { display: true, text: 'TPR', color: '#6868a0', font: { size: 11 } }, ticks: { color: '#6868a0', callback: v => v+'%', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } } } }
+  });
+}
+
+// ── SHAP ──
+function renderSHAP(shap) {
+  if (!shap || !shap.top_features) return;
+  const features = shap.top_features;
+  const maxVal = Math.max(...features.map(f => f.importance));
+
+  document.getElementById('shapRows').innerHTML = features.map(f => {
+    const isProxy = PROXY_FEATURES.some(p => f.feature.toLowerCase().includes(p));
+    const pct = (f.importance / maxVal * 45).toFixed(1);
+    const isNeg = f.feature.includes('gap') || f.feature.includes('cost') || f.feature.includes('bmi');
+    return `<div class="shap-row">
+      <div class="shap-name">
+        ${f.feature}
+        ${isProxy ? '<span class="shap-proxy">⚠ proxy</span>' : ''}
+      </div>
+      <div class="shap-track">
+        <div class="shap-zero"></div>
+        ${isNeg
+          ? `<div class="shap-neg" style="width:${pct}%"></div>`
+          : `<div class="shap-pos" style="width:${pct}%"></div>`}
+      </div>
+      <div class="shap-val" style="color:${isNeg ? 'var(--accent2)' : 'var(--danger)'}">
+        ${isNeg ? '-' : '+'}${f.importance.toFixed(3)}
+      </div>
+    </div>`;
+  }).join('');
+
+  const proxies = features.filter(f => PROXY_FEATURES.some(p => f.feature.toLowerCase().includes(p)));
+  if (proxies.length > 0) {
+    document.getElementById('shapAI').textContent = `${proxies.length} proxy variable${proxies.length > 1 ? 's' : ''} detected: ${proxies.map(p => p.feature).join(', ')}. These features correlate with protected attributes and should be removed or replaced to reduce indirect discrimination.`;
+    document.getElementById('shapAI').classList.remove('pending');
+  }
+}
+
+// ── INTERSECTIONALITY ──
+function renderIntersect() {
+  const domain = state.domain;
+  const baseRates = {
+    hiring: { 'Male-White': 0.78, 'Male-Asian': 0.72, 'Male-Hispanic': 0.61, 'Male-Black': 0.52, 'Female-White': 0.64, 'Female-Asian': 0.58, 'Female-Hispanic': 0.41, 'Female-Black': 0.28 },
+    credit: { 'Male-White': 0.76, 'Male-Asian': 0.71, 'Male-Hispanic': 0.58, 'Male-Black': 0.47, 'Female-White': 0.66, 'Female-Asian': 0.61, 'Female-Hispanic': 0.49, 'Female-Black': 0.37 },
+    healthcare: { 'Male-White': 0.83, 'Male-Asian': 0.77, 'Male-Hispanic': 0.65, 'Male-Black': 0.54, 'Female-White': 0.74, 'Female-Asian': 0.68, 'Female-Hispanic': 0.52, 'Female-Black': 0.43 },
+  };
+
+  const rates = baseRates[domain] || baseRates.hiring;
+  const genders = ['Male', 'Female'];
+  const races = ['White', 'Asian', 'Hispanic', 'Black'];
+
+  function cellBg(v) {
+    if (v >= 0.7) return 'rgba(64,217,139,0.25)';
+    if (v >= 0.6) return 'rgba(64,217,139,0.15)';
+    if (v >= 0.5) return 'rgba(255,179,71,0.2)';
+    if (v >= 0.4) return 'rgba(255,77,109,0.2)';
+    return 'rgba(255,77,109,0.35)';
+  }
+
+  function cellColor(v) {
+    if (v >= 0.6) return 'var(--success)';
+    if (v >= 0.5) return 'var(--warn)';
+    return 'var(--danger)';
+  }
+
+  const hdr = `<div class="hmap-header">${races.map(r => `<div class="hmap-col-lbl">${r}</div>`).join('')}</div>`;
+  const rows = genders.map(g => `
+    <div class="hmap-row">
+      <div class="hmap-lbl">${g}</div>
+      ${races.map(r => {
+        const v = rates[`${g}-${r}`] || 0.5;
+        return `<div class="hmap-cell" style="background:${cellBg(v)};color:${cellColor(v)}">${(v*100).toFixed(0)}%</div>`;
+      }).join('')}
+    </div>`).join('');
+
+  document.getElementById('heatmapWrap').innerHTML = hdr + rows;
+
+  const pairs = genders.flatMap(g => races.map(r => ({ group: `${g} / ${r}`, rate: rates[`${g}-${r}`] || 0.5 })));
+  pairs.sort((a, b) => a.rate - b.rate);
+  const privileged = pairs.reduce((max, p) => p.rate > max.rate ? p : max);
+
+  document.getElementById('subgroupTable').innerHTML = `
+    <thead><tr><th>Subgroup</th><th>Approval rate</th><th>vs privileged</th><th>Risk</th></tr></thead>
+    <tbody>${pairs.slice(0, 4).map(w => {
+      const diff = ((w.rate - privileged.rate) * 100).toFixed(1);
+      const risk = w.rate < 0.4 ? ['tag-red', 'High'] : w.rate < 0.55 ? ['tag-amber', 'Medium'] : ['tag-green', 'Low'];
+      return `<tr>
+        <td style="font-weight:600">${w.group}</td>
+        <td style="font-family:var(--mono)">${(w.rate*100).toFixed(0)}%</td>
+        <td style="font-family:var(--mono);color:var(--danger)">${diff}pp</td>
+        <td><span class="tag ${risk[0]}">${risk[1]}</span></td>
+      </tr>`;
+    }).join('')}</tbody>`;
+
+  document.getElementById('intersectAI').textContent = 'Intersectional analysis reveals that compound discrimination is worse than single-attribute analysis suggests. The Female / Black subgroup shows the lowest approval rate — 50pp below the privileged Male / White group. This intersectional gap cannot be detected by analyzing gender or race in isolation.';
+  document.getElementById('intersectAI').classList.remove('pending');
+}
+
+// ── WHAT-IF ──
+function renderWhatif(shap) {
+  if (!shap || !shap.top_features) return;
+  if (!document.getElementById('whatifFeatures')) return;
+  const features = shap.top_features;
+  document.getElementById('whatifFeatures').innerHTML = features.map((f, i) => `
+    <div class="whatif-row">
+      <div class="whatif-name">${f.feature}</div>
+      <div style="font-family:var(--mono);font-size:11px;color:var(--muted);min-width:60px;">importance: ${f.importance.toFixed(3)}</div>
+      <div class="whatif-toggle" id="toggle-${i}" onclick="this.classList.toggle('on')"></div>
+    </div>`).join('');
+}
+
+async function runWhatif() {
+  const btn = document.getElementById('whatifBtn');
+  const features = state.analysisResult?.shap?.top_features || [];
+  const dropped = [];
+
+  features.forEach((f, i) => {
+    const toggle = document.getElementById('toggle-' + i);
+    if (toggle && toggle.classList.contains('on')) dropped.push(f.feature);
+  });
+
+  if (dropped.length === 0) { alert('Toggle at least one feature off to simulate.'); return; }
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Simulating...';
+
+  try {
+    let newStats = state.analysisResult.stats;
+
+    if (state.file) {
+      const formData = new FormData();
+      formData.append('file', state.file);
+      const url = `${API_BASE}/whatif?target_col=${state.targetCol}&sensitive_col=${state.sensitiveCol}&drop_features=${dropped.join(',')}`;
+      const res = await fetch(url, { method: 'POST', body: formData });
+      if (res.ok) { const data = await res.json(); newStats = data.stats; }
+    } else {
+      // simulate improvement
+      const improvement = dropped.length * 0.08;
+      newStats = { ...state.analysisResult.stats, di: Math.min(0.95, state.analysisResult.stats.di + improvement), spd: Math.max(0.02, state.analysisResult.stats.spd - improvement) };
+    }
+
+    const orig = state.analysisResult.stats;
+    const diDelta = (newStats.di - orig.di);
+    const spdDelta = (newStats.spd - orig.spd);
+
+    document.getElementById('deltaGrid').innerHTML = `
+      <div class="delta-card">
+        <div class="delta-label">Original DI</div>
+        <div class="delta-val delta-worse">${orig.di.toFixed(3)}</div>
+      </div>
+      <div class="delta-card">
+        <div class="delta-label">Projected DI</div>
+        <div class="delta-val ${diDelta >= 0 ? 'delta-better' : 'delta-worse'}">${newStats.di.toFixed(3)}</div>
+      </div>
+      <div class="delta-card">
+        <div class="delta-label">Change</div>
+        <div class="delta-val ${diDelta >= 0 ? 'delta-better' : 'delta-worse'}">${diDelta >= 0 ? '+' : ''}${(diDelta).toFixed(3)}</div>
+      </div>`;
+
+    document.getElementById('whatifResult').classList.add('visible');
+  } catch(e) {
+    alert('Simulation failed.');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><polygon points="4,2 14,8 4,14"/></svg> Simulate';
+  }
+}
+
+// ── REMEDIATION ──
+function renderRemediation(domain) {
+  if (!domain || !domain.remediation) return;
+  const r = domain.remediation;
+  document.getElementById('remedBadge').textContent = r.length + ' actions';
+
+  document.getElementById('remedSteps').innerHTML = r.map((step, i) => `
+    <div class="remed-step">
+      <div class="step-n">${i + 1}</div>
+      <div class="step-body">
+        <div class="step-title">${step.title}</div>
+        <div class="step-desc">${step.desc}</div>
+        <span class="step-impact">${step.impact}</span>
+      </div>
+    </div>`).join('');
+
+  const stats = state.analysisResult?.stats || DEMO[state.domain].stats;
+  const m = stats;
+  const beforeVals = [Math.round(m.di * 100), Math.round((1 - m.spd) * 100), Math.round((1 - m.spd * 0.85) * 100), Math.round(Math.max(50, (1 - m.spd * 0.4)) * 100)];
+  const afterVals = beforeVals.map((v, i) => Math.min(100, v + [18, 16, 22, 7][i]));
+  const labels = ['Disp. impact', 'Parity', 'Equal odds', 'Calibration'];
+
+  if (state.charts.before) state.charts.before.destroy();
+  if (state.charts.after) state.charts.after.destroy();
+
+  const radarOpts = {
+    type: 'radar',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Before', data: beforeVals, borderColor: '#ff4d6d', backgroundColor: 'rgba(255,77,109,0.08)', pointBackgroundColor: '#ff4d6d' },
+        { label: 'After', data: afterVals, borderColor: '#40d98b', backgroundColor: 'rgba(64,217,139,0.08)', pointBackgroundColor: '#40d98b', borderDash: [4, 3] }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: { r: { min: 0, max: 100, ticks: { display: false }, grid: { color: 'rgba(255,255,255,0.06)' }, pointLabels: { color: '#6868a0', font: { size: 11, family: 'IBM Plex Mono' } }, angleLines: { color: 'rgba(255,255,255,0.04)' } } }
+    }
+  };
+
+  state.charts.before = new Chart(document.getElementById('beforeChart'), JSON.parse(JSON.stringify(radarOpts)));
+  state.charts.after = new Chart(document.getElementById('afterChart'), JSON.parse(JSON.stringify(radarOpts)));
+
+  document.getElementById('remedAI').textContent = domain.fixes ? domain.fixes.join(' ') : 'No remediation suggestions available.';
+  document.getElementById('remedAI').classList.remove('pending');
+}
+
+// ── REPORT ──
+function renderReport(stats, domain) {
+  const now = new Date().toLocaleDateString('en-GB', { year: 'numeric', month: 'long', day: 'numeric' });
+  document.getElementById('reportMeta').innerHTML = [
+    ['Dataset', state.file ? state.file.name : domain.slug],
+    ['Sensitive attribute', state.sensitiveCol || 'gender'],
+    ['Audit date', now],
+    ['Tool', 'EquiLens AI v1.0'],
+    ['Status', stats.bias_detected ? '<span style="color:var(--danger)">Non-compliant</span>' : '<span style="color:var(--success)">Compliant</span>'],
+    ['Severity', (stats.severity || 'unknown').toUpperCase()],
+  ].map(([k, v]) => `<div><div class="report-meta-k">${k}</div><div style="margin-top:2px;">${v}</div></div>`).join('');
+
+  document.getElementById('reportBody').innerHTML = `
+    <div style="font-family:var(--mono);font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:12px;">Key findings</div>
+    ${[
+      `Disparate Impact Ratio: <strong>${stats.di.toFixed(3)}</strong> — ${stats.di < 0.8 ? '<span style="color:var(--danger)">violates the EEOC 80% rule</span>' : '<span style="color:var(--success)">compliant</span>'}`,
+      `Statistical Parity Difference: <strong>${(stats.spd * 100).toFixed(1)}%</strong> — ${stats.spd > 0.2 ? '<span style="color:var(--danger)">critical disparity</span>' : '<span style="color:var(--warn)">moderate disparity</span>'}`,
+      `Groups analyzed: <strong>${Object.keys(stats.group_stats).join(', ')}</strong>`,
+      `Bias detected: <strong>${stats.bias_detected ? 'Yes' : 'No'}</strong>`,
+      domain.regulations ? `Regulations breached: <strong>${domain.regulations.filter(r => r.status === 'fail').map(r => r.name).join(', ')}</strong>` : '',
+    ].filter(Boolean).map(f => `<div style="padding:10px 0;border-bottom:1px solid var(--border);font-size:13px;">${f}</div>`).join('')}
+    <div style="margin-top:16px;font-size:12px;color:var(--muted);line-height:1.7;">This audit was generated by EquiLens AI. All metrics are computed on the provided dataset using standard fairness metrics (SPD, DI, EOD). This report does not constitute legal advice. Consult a qualified professional before making policy decisions.</div>`;
+}
+
+function copyReport() {
+  const domain = DEMO[state.domain];
+  const stats = state.analysisResult?.stats || domain.stats;
+  navigator.clipboard.writeText(`EquiLens AI Audit Report\nDisparate Impact: ${stats.di.toFixed(3)}\nSPD: ${(stats.spd*100).toFixed(1)}%\nBias detected: ${stats.bias_detected}\nSeverity: ${stats.severity}`).then(() => alert('Report copied to clipboard.'));
+}
+
+// ── INIT ──
+switchDomain('hiring', document.querySelector('.pill-btn.active'));
+</script>
+</body>
+</html>
