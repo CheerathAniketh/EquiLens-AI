@@ -28,7 +28,7 @@ async def analyze(
     df = pd.read_csv(file.file)
 
     stats = analyze_bias(df, target_col, sensitive_col)
-    model, X_train, X_test, y_test = train_and_evaluate(df, target_col, sensitive_col)
+    model, X_train, X_test, y_test, curves = train_and_evaluate(df, target_col, sensitive_col)
     shap_data = get_shap_values(model, X_train, X_test)
 
     try:
@@ -50,6 +50,7 @@ async def analyze(
         "shap": shap_data,
         "explanation": explanation,
         "fixes": fixes,
+        "curves": curves,  # real ROC + calibration curves per group
     }
 
 

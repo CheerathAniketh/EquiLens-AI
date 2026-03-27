@@ -1,7 +1,10 @@
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
+from sklearn.metrics import roc_curve, auc
+from sklearn.calibration import calibration_curve
 import pandas as pd
+import numpy as np
 
 
 def prepare_features(df, target_col, sensitive_col):
@@ -15,17 +18,67 @@ def prepare_features(df, target_col, sensitive_col):
     return X, y
 
 
+def get_roc_data(y_true, y_prob, sensitive_values, sensitive_test):
+    """Compute ROC curves per group."""
+    groups = sorted(sensitive_test.unique())
+    roc_data = {}
+    for group in groups:
+        mask = sensitive_test == group
+        if mask.sum() < 10:
+            continue
+        fpr, tpr, _ = roc_curve(y_true[mask], y_prob[mask])
+        roc_auc = round(auc(fpr, tpr), 3)
+        # downsample to 20 points for frontend
+        idx = np.linspace(0, len(fpr) - 1, min(20, len(fpr)), dtype=int)
+        roc_data[str(group)] = {
+            "fpr": [round(float(x), 3) for x in fpr[idx]],
+            "tpr": [round(float(x), 3) for x in tpr[idx]],
+            "auc": roc_auc
+        }
+    return roc_data
+
+
+def get_calibration_data(y_true, y_prob, sensitive_values, sensitive_test):
+    """Compute calibration curves per group."""
+    groups = sorted(sensitive_test.unique())
+    calib_data = {}
+    for group in groups:
+        mask = sensitive_test == group
+        if mask.sum() < 10:
+            continue
+        fraction_of_positives, mean_predicted = calibration_curve(
+            y_true[mask], y_prob[mask], n_bins=10, strategy='uniform'
+        )
+        calib_data[str(group)] = {
+            "mean_predicted": [round(float(x), 3) for x in mean_predicted],
+            "fraction_positive": [round(float(x), 3) for x in fraction_of_positives],
+        }
+    return calib_data
+
+
 def train_and_evaluate(df, target_col, sensitive_col):
     X, y = prepare_features(df, target_col, sensitive_col)
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, random_state=42)
 
+    # keep sensitive col values aligned with test set for per-group curves
+    sensitive_test = df[sensitive_col].iloc[y_test.index] if sensitive_col in df.columns else None
+
     model = RandomForestClassifier(
         n_estimators=100,
         max_depth=8,
         random_state=42,
-        n_jobs=-1  # use all CPU cores
+        n_jobs=-1
     )
     model.fit(X_train, y_train)
 
-    return model, X_train, X_test, y_test
+    # compute real ROC + calibration curves
+    y_prob = model.predict_proba(X_test)[:, 1]
+    curves = {}
+    if sensitive_test is not None:
+        sensitive_test = sensitive_test.reset_index(drop=True)
+        y_test_reset = y_test.reset_index(drop=True)
+        curves["roc"] = get_roc_data(y_test_reset, y_prob, sensitive_test.unique(), sensitive_test)
+        curves["calibration"] = get_calibration_data(y_test_reset, y_prob, sensitive_test.unique(), sensitive_test)
+
+    return model, X_train, X_test, y_test, curves
