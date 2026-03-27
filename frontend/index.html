@@ -538,7 +538,7 @@ function renderAll() {
   renderAIExplanation(d.explanation || domain.explanation);
   renderRegPills(d.stats.di < 0.8);
   renderMetrics(d.stats);
-  renderCalibROC(d.curves);
+  renderCalibROC(d.curves, d.stats);
   renderSHAP(d.shap);
   renderIntersect(d.stats);
   renderRemediation(d);
@@ -668,74 +668,77 @@ function renderMetrics(stats) {
 }
 
 // ── CALIB + ROC — real data from backend ──
-function renderCalibROC(curves) {
+function renderCalibROC(curves, stats) {
   if (state.charts.calib) state.charts.calib.destroy();
   if (state.charts.roc) state.charts.roc.destroy();
 
   const chartColors = ['#6c63ff', '#ff4d6d', '#ffb347', '#00e5b0'];
   const commonOpts = { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#6868a0', boxWidth: 12, font: { size: 10 } } } } };
 
+  // Map encoded keys "0","1" back to real group names from stats
+  const groupNames = stats ? Object.keys(stats.group_stats) : [];
+function labelFor(key) { return key; }
+
   if (curves && curves.calibration && Object.keys(curves.calibration).length > 0) {
-    // REAL calibration data from backend
-    const groups = Object.keys(curves.calibration);
-    const calibDatasets = groups.map((g, i) => ({
-      label: g,
-      data: curves.calibration[g].mean_predicted.map((x, j) => ({ x: x * 100, y: curves.calibration[g].fraction_positive[j] * 100 })),
+    const keys = Object.keys(curves.calibration);
+    const calibDatasets = keys.map((k, i) => ({
+      label: labelFor(k),
+      data: curves.calibration[k].mean_predicted.map((x, j) => ({
+        x: +(x * 100).toFixed(1),
+        y: +(curves.calibration[k].fraction_positive[j] * 100).toFixed(1)
+      })),
       borderColor: chartColors[i % chartColors.length],
-      tension: 0.3, pointRadius: 3, fill: false,
+      backgroundColor: chartColors[i % chartColors.length],
+      tension: 0.3, pointRadius: 4, fill: false,
+      showLine: true,
       borderDash: i > 0 ? [4, 3] : []
     }));
-    calibDatasets.push({ label: 'Perfect', data: [{x:0,y:0},{x:100,y:100}], borderColor: 'rgba(255,255,255,0.15)', tension: 0, pointRadius: 0, borderDash: [2,4], fill: false });
+    calibDatasets.push({
+      label: 'Perfect',
+      data: [{x:0,y:0},{x:100,y:100}],
+      borderColor: 'rgba(255,255,255,0.15)',
+      tension: 0, pointRadius: 0, borderDash: [2,4], fill: false, showLine: true
+    });
     state.charts.calib = new Chart(document.getElementById('calibChart'), {
       type: 'scatter',
       data: { datasets: calibDatasets },
-      options: { ...commonOpts, scales: { x: { title: { display: true, text: 'Mean predicted', color: '#6868a0', font: { size: 11 } }, ticks: { color: '#6868a0', callback: v => v+'%', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } }, y: { title: { display: true, text: 'Fraction positive', color: '#6868a0', font: { size: 11 } }, ticks: { color: '#6868a0', callback: v => v+'%', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } } } }
-    });
-  } else {
-    // fallback skeleton
-    const pts = [0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1.0];
-    state.charts.calib = new Chart(document.getElementById('calibChart'), {
-      type: 'line',
-      data: { labels: pts.map(p => (p*100)+'%'), datasets: [
-        { label: 'Group A', data: pts.map(p => +(Math.min(1, p*1.05)*100).toFixed(1)), borderColor: '#6c63ff', tension: 0.3, pointRadius: 3, fill: false },
-        { label: 'Group B', data: pts.map(p => +(Math.min(1, p*0.82+0.04)*100).toFixed(1)), borderColor: '#ff4d6d', tension: 0.3, pointRadius: 3, fill: false, borderDash: [4,3] },
-        { label: 'Perfect', data: pts.map(p => +(p*100).toFixed(1)), borderColor: 'rgba(255,255,255,0.15)', tension: 0, pointRadius: 0, borderDash: [2,4], fill: false },
-      ]},
-      options: { ...commonOpts, scales: { x: { ticks: { color: '#6868a0', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } }, y: { ticks: { color: '#6868a0', callback: v => v+'%', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } } } }
+      options: { ...commonOpts, scales: {
+        x: { title: { display: true, text: 'Mean predicted', color: '#6868a0', font: { size: 11 } }, min: 0, max: 100, ticks: { color: '#6868a0', callback: v => v+'%', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } },
+        y: { title: { display: true, text: 'Fraction positive', color: '#6868a0', font: { size: 11 } }, min: 0, max: 100, ticks: { color: '#6868a0', callback: v => v+'%', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } }
+      }}
     });
   }
 
   if (curves && curves.roc && Object.keys(curves.roc).length > 0) {
-    // REAL ROC data from backend
-    const groups = Object.keys(curves.roc);
-    const rocDatasets = groups.map((g, i) => ({
-      label: `${g} (AUC ${curves.roc[g].auc})`,
-      data: curves.roc[g].fpr.map((x, j) => ({ x: x * 100, y: curves.roc[g].tpr[j] * 100 })),
+    const keys = Object.keys(curves.roc);
+    const rocDatasets = keys.map((k, i) => ({
+      label: `${labelFor(k)} (AUC ${curves.roc[k].auc})`,
+      data: curves.roc[k].fpr.map((x, j) => ({
+        x: +(x * 100).toFixed(1),
+        y: +(curves.roc[k].tpr[j] * 100).toFixed(1)
+      })),
       borderColor: chartColors[i % chartColors.length],
+      backgroundColor: chartColors[i % chartColors.length],
       tension: 0.3, pointRadius: 2, fill: false,
+      showLine: true,
       borderDash: i > 0 ? [4, 3] : []
     }));
-    rocDatasets.push({ label: 'Random', data: [{x:0,y:0},{x:100,y:100}], borderColor: 'rgba(255,255,255,0.1)', tension: 0, pointRadius: 0, borderDash: [2,4], fill: false });
+    rocDatasets.push({
+      label: 'Random',
+      data: [{x:0,y:0},{x:100,y:100}],
+      borderColor: 'rgba(255,255,255,0.1)',
+      tension: 0, pointRadius: 0, borderDash: [2,4], fill: false, showLine: true
+    });
     state.charts.roc = new Chart(document.getElementById('rocChart'), {
       type: 'scatter',
       data: { datasets: rocDatasets },
-      options: { ...commonOpts, scales: { x: { title: { display: true, text: 'FPR', color: '#6868a0', font: { size: 11 } }, ticks: { color: '#6868a0', callback: v => v+'%', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } }, y: { title: { display: true, text: 'TPR', color: '#6868a0', font: { size: 11 } }, ticks: { color: '#6868a0', callback: v => v+'%', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } } } }
-    });
-  } else {
-    // fallback skeleton
-    const fprs = [0,0.05,0.1,0.2,0.3,0.5,0.7,1.0];
-    state.charts.roc = new Chart(document.getElementById('rocChart'), {
-      type: 'line',
-      data: { labels: fprs.map(v => (v*100)+'%'), datasets: [
-        { label: 'Group A', data: [0,38,61,79,87,93,97,100], borderColor: '#6c63ff', tension: 0.3, pointRadius: 3, fill: false },
-        { label: 'Group B', data: [0,21,39,58,70,82,91,100], borderColor: '#ff4d6d', tension: 0.3, pointRadius: 3, fill: false, borderDash: [4,3] },
-        { label: 'Random', data: fprs.map(v => +(v*100).toFixed(1)), borderColor: 'rgba(255,255,255,0.1)', tension: 0, pointRadius: 0, borderDash: [2,4], fill: false },
-      ]},
-      options: { ...commonOpts, scales: { x: { title: { display: true, text: 'FPR', color: '#6868a0', font: { size: 11 } }, ticks: { color: '#6868a0', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } }, y: { title: { display: true, text: 'TPR', color: '#6868a0', font: { size: 11 } }, ticks: { color: '#6868a0', callback: v => v+'%', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } } } }
+      options: { ...commonOpts, scales: {
+        x: { title: { display: true, text: 'FPR', color: '#6868a0', font: { size: 11 } }, min: 0, max: 100, ticks: { color: '#6868a0', callback: v => v+'%', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } },
+        y: { title: { display: true, text: 'TPR', color: '#6868a0', font: { size: 11 } }, min: 0, max: 100, ticks: { color: '#6868a0', callback: v => v+'%', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } }
+      }}
     });
   }
 }
-
 // ── SHAP — uses real proxy_features from backend ──
 function renderSHAP(shap) {
   if (!shap || !shap.top_features) return;

@@ -6,13 +6,15 @@ from sklearn.calibration import calibration_curve
 import pandas as pd
 import numpy as np
 
-
 def prepare_features(df, target_col, sensitive_col):
     df_encoded = df.copy()
     le = LabelEncoder()
     for col in df_encoded.select_dtypes(include='object').columns:
-        df_encoded[col] = le.fit_transform(
-            df_encoded[col].astype(str))
+        if col != sensitive_col:  # ← DON'T encode sensitive col here
+            df_encoded[col] = le.fit_transform(df_encoded[col].astype(str))
+    # encode target separately
+    if df_encoded[target_col].dtype == object:
+        df_encoded[target_col] = le.fit_transform(df_encoded[target_col].astype(str))
     X = df_encoded.drop(columns=[target_col])
     y = df_encoded[target_col]
     return X, y
@@ -57,12 +59,16 @@ def get_calibration_data(y_true, y_prob, sensitive_values, sensitive_test):
 
 
 def train_and_evaluate(df, target_col, sensitive_col):
+    # Keep original sensitive values BEFORE encoding (for curve labels)
+    sensitive_original = df[sensitive_col].astype(str) if sensitive_col in df.columns else None
+
     X, y = prepare_features(df, target_col, sensitive_col)
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, random_state=42)
 
-    # keep sensitive col values aligned with test set for per-group curves
-    sensitive_test = df[sensitive_col].iloc[y_test.index] if sensitive_col in df.columns else None
+    # Drop sensitive col from training features to avoid leakage
+    X_train_model = X_train.drop(columns=[sensitive_col], errors='ignore')
+    X_test_model = X_test.drop(columns=[sensitive_col], errors='ignore')
 
     model = RandomForestClassifier(
         n_estimators=100,
@@ -70,15 +76,15 @@ def train_and_evaluate(df, target_col, sensitive_col):
         random_state=42,
         n_jobs=-1
     )
-    model.fit(X_train, y_train)
+    model.fit(X_train_model, y_train)
 
-    # compute real ROC + calibration curves
-    y_prob = model.predict_proba(X_test)[:, 1]
+    # Compute real ROC + calibration curves using original string group names
+    y_prob = model.predict_proba(X_test_model)[:, 1]
     curves = {}
-    if sensitive_test is not None:
-        sensitive_test = sensitive_test.reset_index(drop=True)
+    if sensitive_original is not None:
+        sensitive_test = sensitive_original.iloc[y_test.index].reset_index(drop=True)
         y_test_reset = y_test.reset_index(drop=True)
         curves["roc"] = get_roc_data(y_test_reset, y_prob, sensitive_test.unique(), sensitive_test)
         curves["calibration"] = get_calibration_data(y_test_reset, y_prob, sensitive_test.unique(), sensitive_test)
 
-    return model, X_train, X_test, y_test, curves
+    return model, X_train_model, X_test_model, y_test, curves
