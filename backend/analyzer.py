@@ -2,11 +2,14 @@ import pandas as pd
 
 # Known label mappings for common encoded columns
 LABEL_MAPS = {
-    "sex":       {0: "Female", 1: "Male", "0": "Female", "1": "Male"},
-    "gender":    {0: "Female", 1: "Male", "0": "Female", "1": "Male"},
-    "race":      {0: "Other", 1: "White", "0": "Other", "1": "White"},
-    "income":    {0: "<=50K", 1: ">50K", "0": "<=50K", "1": ">50K"},
+    "sex":    {0: "Female", 1: "Male", "0": "Female", "1": "Male"},
+    "gender": {0: "Female", 1: "Male", "0": "Female", "1": "Male"},
+    "race":   {0: "Other", 1: "White", "0": "Other", "1": "White"},
+    "income": {0: "<=50K", 1: ">50K", "0": "<=50K", "1": ">50K"},
 }
+
+# Values treated as "positive" outcome when target column is a string
+POSITIVE_VALUES = {'yes', 'true', '1', 'hired', 'approved', 'positive', '>50k', 'accept', 'accepted', 'pass'}
 
 
 def decode_group_label(sensitive_col, value):
@@ -16,15 +19,22 @@ def decode_group_label(sensitive_col, value):
         return mapping[value]
     return str(value)
 
-
 def get_group_stats(df, target_col, sensitive_col):
     stats = {}
+
+    # handle string target columns
+    target = df[target_col]
+    if target.dtype == object or str(target.dtype) == 'string':
+        target = target.str.strip().str.lower().apply(
+            lambda x: 1 if x in POSITIVE_VALUES else 0
+        )
+
     for group in df[sensitive_col].unique():
-        subset = df[df[sensitive_col] == group]
+        mask = df[sensitive_col] == group
         label = decode_group_label(sensitive_col, group)
         stats[label] = {
-            "count": len(subset),
-            "positive_rate": round(float(subset[target_col].mean()), 4)
+            "count": int(mask.sum()),
+            "positive_rate": round(float(target[mask].mean()), 4)
         }
     return stats
 

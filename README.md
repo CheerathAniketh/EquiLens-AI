@@ -1,19 +1,19 @@
 # EquiLens AI
 ### AI-powered bias detection for non-technical users
 
-> "Amazon's hiring AI downgraded women's CVs. COMPAS 
-> flagged Black defendants at 2× the rate. These failures 
+> "Amazon's hiring AI downgraded women's CVs. COMPAS
+> flagged Black defendants at 2× the rate. These failures
 > could have been caught. EquiLens catches them."
 
 ## The Problem
-AI makes life-changing decisions about jobs, loans, and 
-healthcare. When trained on biased historical data, these 
-systems don't just repeat discrimination — they amplify 
+AI makes life-changing decisions about jobs, loans, and
+healthcare. When trained on biased historical data, these
+systems don't just repeat discrimination — they amplify
 it at scale, silently, with no accountability.
 
 ## The Solution
-EquiLens gives any organization — NGO, school, small 
-business — the ability to audit their data for bias 
+EquiLens gives any organization — NGO, school, small
+business — the ability to audit their data for bias
 before it causes harm. No data science degree required.
 
 ## How It Works
@@ -25,13 +25,13 @@ before it causes harm. No data science degree required.
 6. What-if panel shows impact of removing biased features
 
 ## Real User Story
-Priya runs an NGO in Pune distributing scholarships. 
-She uploads her dataset, selects gender as the sensitive 
-attribute, and discovers rural girls are approved at 34% 
-the rate of urban boys — a Disparate Impact of 0.34, far 
-below the legal threshold of 0.8. Gemini explains this in 
-plain language and suggests fixes. Priya downloads the 
-audit report and shares it with her board. All in under 
+Priya runs an NGO in Pune distributing scholarships.
+She uploads her dataset, selects gender as the sensitive
+attribute, and discovers rural girls are approved at 34%
+the rate of urban boys — a Disparate Impact of 0.34, far
+below the legal threshold of 0.8. Gemini explains this in
+plain language and suggests fixes. Priya downloads the
+audit report and shares it with her board. All in under
 5 minutes.
 
 ## Tech Stack
@@ -39,6 +39,7 @@ audit report and shares it with her board. All in under
 - Bias Metrics: SPD, Disparate Impact, Equalized Odds
 - Explainability: SHAP
 - AI Layer: Gemini API (explanation + audience toggle)
+- Frontend: Single-page HTML/CSS/JS with Chart.js
 - Deployment: Google Cloud Run
 
 ## Fairness Metrics
@@ -49,35 +50,101 @@ audit report and shares it with her board. All in under
 | Equalized Odds | > 0.1 = biased | Error rate gap between groups |
 
 ## What Makes EquiLens Different
-Every existing tool — IBM AI Fairness 360, Fairlearn, 
-Aequitas — outputs p-values and confusion matrices that 
-only data scientists can interpret. EquiLens translates 
+Every existing tool — IBM AI Fairness 360, Fairlearn,
+Aequitas — outputs p-values and confusion matrices that
+only data scientists can interpret. EquiLens translates
 those results into plain language tuned to who's reading:
 - Student → learning-oriented explanation
 - NGO worker → policy implication
 - Policy maker → legal risk framing
 
 ## SDG Alignment
-EquiLens directly addresses UN Sustainable Development 
-Goal 10 — Reduced Inequalities. By making AI fairness 
-auditing accessible to organizations without data science 
-teams, we prevent algorithmic discrimination before it 
+EquiLens directly addresses UN Sustainable Development
+Goal 10 — Reduced Inequalities. By making AI fairness
+auditing accessible to organizations without data science
+teams, we prevent algorithmic discrimination before it
 reaches production.
 
+---
 
-## Status
-🚧 Active development 
+## ✅ What's Done
 
-## Live Demo
-🔗 Coming soon
+### Backend
+- [x] FastAPI server with CORS middleware
+- [x] CSV upload and parsing via `/analyze` endpoint
+- [x] Bias metrics computed locally: SPD, Disparate Impact, Equalized Odds (estimated)
+- [x] SHAP feature importance via `explainer.py`
+- [x] Model training and evaluation via `trainer.py`
+- [x] Gemini API integration for plain-language explanations (`gemini_client.py`)
+- [x] Audience toggle: NGO worker / Student / Policy maker
+- [x] Graceful fallback explanation when Gemini quota is exhausted or API key is invalid
+- [x] Fallback explanation is dynamic — based on actual CSV data, not hardcoded
+- [x] Fallback responses marked with `*` so developers know Gemini is not responding
+- [x] Smart label decoding: encoded columns (0/1) mapped to human-readable names (Male/Female etc.)
+- [x] String target column support (e.g. "yes"/"no", "hired"/"rejected")
+- [x] Frontend served via FastAPI static files mount (no CORS issues)
+
+### Frontend
+- [x] Single-page app with sidebar navigation
+- [x] Overview page: score cards (DI, SPD, severity), approval rate chart, group comparison table
+- [x] Fairness metrics page: metric bars, calibration curve, ROC by group
+- [x] Explainability page: SHAP feature importance bars with proxy variable detection
+- [x] Intersectionality page: gender × race heatmap, most disadvantaged subgroups table
+- [x] Remediation page: before/after radar charts, recommended steps
+- [x] Audit report page: structured report with key findings and copy-to-clipboard
+- [x] Domain switcher: Hiring / Credit / Healthcare demo presets
+- [x] Auto-detect target and sensitive columns from uploaded CSV headers
+- [x] Drag-and-drop CSV upload with column auto-population in dropdowns
+- [x] Gemini audience toggle (NGO / Student / Policy maker)
+- [x] Regulation compliance pills (EEOC, EU AI Act, GDPR)
+
+---
+
+## 🚧 What's Pending
+
+### Backend
+- [ ] `/whatif` endpoint — simulate bias impact of dropping specific features
+- [ ] Equalized Odds computed properly (currently estimated from SPD)
+- [ ] Multi-class sensitive attribute support (more than 2 groups)
+- [ ] PDF export of audit report
+- [ ] Authentication / API key management for multi-user deployments
+- [ ] Rate limiting and input validation on file uploads
+
+### Frontend
+- [ ] What-if simulator page (UI exists, backend endpoint pending)
+- [ ] Real intersectionality data from backend (currently uses hardcoded demo data)
+- [ ] Audience toggle re-fetches explanation from backend (currently only works for uploaded CSVs)
+- [ ] Mobile responsive layout (sidebar hidden on small screens but content not fully optimized)
+- [ ] Loading skeletons instead of spinner during analysis
+- [ ] Error messages shown inline instead of `alert()` popups
+
+### Deployment
+- [ ] Docker image finalized and tested
+- [ ] Google Cloud Run deployment
+- [ ] Environment variable management for production (`.env` → Cloud Secrets)
+- [ ] Live demo URL
+
+---
 
 ## Setup
+
 ```bash
 git clone https://github.com/CheerathAniketh/EquiLens-AI
 cd EquiLens-AI/backend
 pip install -r requirements.txt
+```
+
+Create a `.env` file in the `backend/` folder:
+```
+GEMINI_API_KEY=your_api_key_here
+```
+
+Run the server:
+```bash
 uvicorn main:app --reload
 ```
+
+Then open `http://127.0.0.1:8000` in your browser.
 
 ## License
 MIT

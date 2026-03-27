@@ -16,8 +16,13 @@ PERSONAS = {
 }
 
 
-def _is_quota_error(e: Exception) -> bool:
-    return "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e)
+def _is_api_error(e: Exception) -> bool:
+    err = str(e)
+    return any(code in err for code in [
+        "429", "RESOURCE_EXHAUSTED",
+        "400", "INVALID_ARGUMENT",
+        "API_KEY_INVALID", "API Key not found"
+    ])
 
 
 def _fallback_explanation(bias_report) -> str:
@@ -37,17 +42,24 @@ def _fallback_explanation(bias_report) -> str:
             f"{least[1]['positive_rate']*100:.1f}%."
         )
 
+    bias_line = (
+        "This level of disparity means equally qualified people are being treated differently "
+        "based on a protected attribute. In a hiring context, this could mean qualified candidates "
+        "are being rejected due to gender, race, or other protected characteristics. "
+        if di < 0.8 else
+        "The model appears to be treating groups fairly based on these metrics. "
+    )
+
     return (
         f"This dataset shows {'significant' if di < 0.8 else 'no significant'} bias. "
         f"The Disparate Impact Ratio is {di:.3f} "
         f"({'below' if di < 0.8 else 'above'} the legal threshold of 0.80), "
         f"and the outcome gap between groups is {spd*100:.1f} percentage points. "
         f"Severity: {severity.upper()}. {group_lines}\n\n"
-        f"{'This level of disparity means equally qualified people are being treated differently based on a protected attribute. '
-           'In a hiring context, this could mean qualified candidates are being rejected due to gender, race, or other protected characteristics. '
-           if di < 0.8 else 'The model appears to be treating groups fairly based on these metrics.'}\n\n"
-        f"To address this: first, review and remove any proxy features that indirectly encode the sensitive attribute. "
-        f"Second, retrain the model on a rebalanced dataset where all groups have equal representation in positive outcomes."
+        f"{bias_line}\n\n"
+        f"To address this: first, review and remove any proxy features that indirectly encode "
+        f"the sensitive attribute. Second, retrain the model on a rebalanced dataset where all "
+        f"groups have equal representation in positive outcomes. *"
     )
 
 
@@ -101,7 +113,7 @@ Rules:
         )
         return response.text
     except Exception as e:
-        if _is_quota_error(e):
+        if _is_api_error(e):
             return _fallback_explanation(bias_report)
         raise e
 
@@ -126,6 +138,6 @@ Example format: ["fix 1", "fix 2", "fix 3"]
         except (ValueError, json.JSONDecodeError):
             return _fallback_fixes(bias_report, shap_data)
     except Exception as e:
-        if _is_quota_error(e):
+        if _is_api_error(e):
             return _fallback_fixes(bias_report, shap_data)
         raise e
