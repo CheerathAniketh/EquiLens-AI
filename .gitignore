@@ -21,3 +21,5 @@ Thumbs.db
 
 # logs
 *.log
+
+echo "sample_data/pd" >> .gitignore
