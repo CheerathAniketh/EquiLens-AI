@@ -74,7 +74,7 @@ reaches production.
 ### Backend
 - [x] FastAPI server with CORS middleware
 - [x] CSV upload and parsing via `/analyze` endpoint
-- [x] Bias metrics computed locally: SPD, Disparate Impact, Equalized Odds (estimated)
+- [x] Bias metrics computed locally: SPD, Disparate Impact, Equalized Odds (real TPR/FPR per group)
 - [x] SHAP feature importance via `explainer.py`
 - [x] Model training and evaluation via `trainer.py`
 - [x] Gemini API integration for plain-language explanations (`gemini_client.py`)
@@ -90,6 +90,7 @@ reaches production.
 - [x] Cells with fewer than 10 samples excluded and marked null to avoid misleading statistics
 - [x] Correct integer→label decoding for multi-value encoded columns (race: 0–4)
 - [x] Optional `sensitive_col_2` parameter on `/analyze` endpoint
+- [x] Real Equalized Odds via `compute_eod()` — true TPR/FPR difference across groups
 
 ### Frontend
 - [x] Single-page app with sidebar navigation
@@ -117,7 +118,6 @@ reaches production.
 
 ### Backend
 - [ ] `/whatif` endpoint — simulate bias impact of dropping specific features
-- [ ] Equalized Odds computed properly (currently estimated from SPD)
 - [ ] PDF export of audit report
 - [ ] Authentication / API key management for multi-user deployments
 - [ ] Rate limiting and input validation on file uploads
@@ -140,8 +140,8 @@ reaches production.
 
 ## Setup
 ```bash
-git clone https://github.com/CheerathAniketh/EquiLens-AI
-cd EquiLens-AI/backend
+git clone https://github.com/CheerathAniketh/Solution-Challenge
+cd Solution-Challenge/backend
 pip install -r requirements.txt
 ```
 
