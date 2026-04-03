@@ -154,7 +154,35 @@ body::before { content: ''; position: fixed; inset: 0; background-image: linear-
 @keyframes spin { to { transform: rotate(360deg); } }
 .report-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 18px; background: var(--surface2); border-radius: 8px; border: 1px solid var(--border); margin-bottom: 16px; font-size: 12px; }
 .report-meta-k { color: var(--muted); font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; }
-@media (max-width: 900px) { .app { grid-template-columns: 1fr; } .sidebar { display: none; } .two-col, .score-grid { grid-template-columns: 1fr; } }
+
+/* ── WHAT-IF STYLES ── */
+.wi-feature-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 20px; }
+.wi-check { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface2); cursor: pointer; transition: all 0.15s; user-select: none; }
+.wi-check:hover { border-color: var(--border2); background: var(--surface3); }
+.wi-check.selected { border-color: var(--accent); background: rgba(108,99,255,0.1); }
+.wi-check input { display: none; }
+.wi-check-box { width: 14px; height: 14px; border-radius: 4px; border: 1px solid var(--border2); background: transparent; flex-shrink: 0; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
+.wi-check.selected .wi-check-box { background: var(--accent); border-color: var(--accent); }
+.wi-check-box::after { content: ''; width: 8px; height: 5px; border-left: 1.5px solid #fff; border-bottom: 1.5px solid #fff; transform: rotate(-45deg) translateY(-1px); opacity: 0; transition: opacity 0.1s; }
+.wi-check.selected .wi-check-box::after { opacity: 1; }
+.wi-check-label { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+.wi-check.selected .wi-check-label { color: var(--text); }
+.wi-delta-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 20px; }
+.wi-delta-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; text-align: center; }
+.wi-delta-metric { font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-bottom: 10px; }
+.wi-delta-row { display: flex; align-items: center; justify-content: center; gap: 10px; }
+.wi-delta-before { font-family: var(--mono); font-size: 16px; color: var(--muted); }
+.wi-delta-arrow { font-size: 12px; color: var(--muted); }
+.wi-delta-after { font-family: var(--mono); font-size: 20px; font-weight: 600; }
+.wi-delta-after.better { color: var(--success); }
+.wi-delta-after.worse  { color: var(--danger); }
+.wi-delta-after.same   { color: var(--muted); }
+.wi-delta-change { font-family: var(--mono); font-size: 11px; margin-top: 6px; }
+.wi-delta-change.better { color: var(--success); }
+.wi-delta-change.worse  { color: var(--danger); }
+.wi-empty { text-align: center; padding: 48px 32px; color: var(--muted); font-family: var(--mono); font-size: 12px; line-height: 2; border: 1px dashed var(--border); border-radius: 10px; }
+
+@media (max-width: 900px) { .app { grid-template-columns: 1fr; } .sidebar { display: none; } .two-col, .score-grid, .wi-delta-grid, .wi-feature-grid { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body>
@@ -182,6 +210,10 @@ body::before { content: ''; position: fixed; inset: 0; background-image: linear-
     Intersectionality
   </div>
   <div class="nav-section-label">Actions</div>
+  <div class="nav-item" onclick="nav('whatif', this)">
+    <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 8h3l2-5 3 10 2-5h2"/></svg>
+    What-if simulator
+  </div>
   <div class="nav-item" onclick="nav('remediation', this)">
     <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M13 2L8 7M3 9l-1 4 4-1M5 11l6-6"/></svg>
     Remediation
@@ -215,9 +247,7 @@ body::before { content: ''; position: fixed; inset: 0; background-image: linear-
     <span class="upload-label">Sensitive:</span>
     <select class="sel" id="sensitiveSel"><option value="">Select column</option></select>
     <span class="upload-label">Intersect with:</span>
-    <select class="sel" id="sensitiveSel2">
-    <option value="">(optional)</option>
-    </select>
+    <select class="sel" id="sensitiveSel2"><option value="">(optional)</option></select>
     <button class="run-btn" id="runBtn" onclick="runAnalysis()">
       <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><polygon points="4,2 14,8 4,14"/></svg>
       Analyze
@@ -331,6 +361,63 @@ body::before { content: ''; position: fixed; inset: 0; background-image: linear-
     </div>
   </div>
 
+  <!-- WHAT-IF SIMULATOR -->
+  <div class="page" id="page-whatif">
+    <div class="content">
+      <div class="panel full" style="margin-bottom:18px;">
+        <div class="panel-hd">
+          Feature simulator
+          <span class="badge badge-purple">What-if</span>
+          <span style="margin-left:auto;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:none;letter-spacing:0;">Select features to drop and simulate the bias impact</span>
+        </div>
+        <div id="wiNoDataMsg" class="wi-empty">
+          Run an analysis first to load features from your dataset.<br>
+          <span style="opacity:0.5;">Upload a CSV → Analyze → then return here to simulate.</span>
+        </div>
+        <div id="wiFeatureSection" style="display:none;">
+          <div style="font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:10px;">Available features — check to simulate dropping them</div>
+          <div class="wi-feature-grid" id="wiFeatureGrid"></div>
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+            <button class="run-btn" id="wiRunBtn" onclick="runWhatif()">
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 4h14M1 8h10M1 12h6"/></svg>
+              Simulate
+            </button>
+            <button class="export-btn" style="margin-left:0;" onclick="clearWhatif()">Reset</button>
+            <span id="wiSelectedCount" style="font-family:var(--mono);font-size:11px;color:var(--muted);">0 features selected</span>
+          </div>
+        </div>
+      </div>
+
+      <div id="wiResults" style="display:none;">
+        <div class="wi-delta-grid" id="wiDeltaGrid"></div>
+
+        <div class="two-col" style="margin-bottom:18px;">
+          <div class="panel">
+            <div class="panel-hd">Before <span class="badge badge-red">original</span></div>
+            <div class="chart-wrap"><canvas id="wiBeforeChart"></canvas></div>
+          </div>
+          <div class="panel">
+            <div class="panel-hd">After dropping selected features <span class="badge badge-green">simulated</span></div>
+            <div class="chart-wrap"><canvas id="wiAfterChart"></canvas></div>
+          </div>
+        </div>
+
+        <div class="panel full" style="margin-bottom:18px;">
+          <div class="panel-hd">Remaining features <span class="badge badge-teal" id="wiRemainingBadge"></span></div>
+          <div id="wiRemainingList" style="font-family:var(--mono);font-size:12px;color:var(--muted);line-height:2.2;"></div>
+        </div>
+
+        <div class="panel full">
+          <div class="panel-hd">AI impact analysis <span class="badge badge-purple">Gemini</span></div>
+          <div class="ai-box">
+            <div class="ai-tag">What-if analysis</div>
+            <div class="ai-text" id="wiExplanation"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- REMEDIATION -->
   <div class="page" id="page-remediation">
     <div class="content">
@@ -373,7 +460,7 @@ body::before { content: ''; position: fixed; inset: 0; background-image: linear-
 </div>
 
 <script>
-const API_BASE = '';  // empty = same origin (served by FastAPI)
+const API_BASE = '';
 
 let state = {
   file: null, targetCol: '', sensitiveCol: '',
@@ -381,7 +468,7 @@ let state = {
   analysisResult: null, charts: {}
 };
 
-// ── DEMO DATA (used when no file uploaded) ──
+// ── DEMO DATA ──
 const DEMO = {
   hiring: {
     slug: 'hiring-audit',
@@ -395,12 +482,8 @@ const DEMO = {
     ], proxy_features: ['employment_gap', 'university_prestige'] },
     explanation: "This hiring dataset shows serious bias against female applicants. Women are approved at 44% compared to 72% for men — a gap of 28 percentage points. The Disparate Impact Ratio of 0.61 falls well below the legal threshold of 0.80.\n\nEqually qualified female candidates are systematically passed over because historical data encoded past biases into the model.\n\nTo fix this: remove employment_gap as a feature — it penalizes people who took parental leave. Second, retrain on a balanced dataset with equal positive outcome rates across gender groups.",
     fixes: ["Remove 'employment_gap' feature — it acts as a proxy for parental leave, penalizing women.", "Retrain on rebalanced data with equal positive outcome rates across gender groups.", "Apply post-processing threshold calibration to equalize false positive rates."],
-    regulations: [
-      { name: 'EEOC 80% rule', status: 'fail' },
-      { name: 'EU AI Act Art. 10', status: 'fail' },
-      { name: 'GDPR Art. 22', status: 'warn' },
-    ],
-    curves: null  // demo has no real curves
+    regulations: [{ name: 'EEOC 80% rule', status: 'fail' }, { name: 'EU AI Act Art. 10', status: 'fail' }, { name: 'GDPR Art. 22', status: 'warn' }],
+    curves: null
   },
   credit: {
     slug: 'credit-audit',
@@ -414,11 +497,7 @@ const DEMO = {
     ], proxy_features: ['zip_code_score', 'years_at_address'] },
     explanation: "This credit dataset shows significant racial bias. Black applicants are approved at 42% compared to 71% for White applicants. The zip code score feature is the primary culprit — it's a proxy for historically redlined neighborhoods.\n\nQualified Black borrowers are systematically denied loans not because of creditworthiness, but because of where they live.\n\nFix: Replace zip code score with individual-level financial metrics, and apply adversarial debiasing during model training.",
     fixes: ["Replace zip_code_score with individual financial behavior metrics.", "Apply adversarial debiasing to remove race-correlated features.", "Implement human review for borderline cases with protected attributes redacted."],
-    regulations: [
-      { name: 'ECOA / Reg B', status: 'fail' },
-      { name: 'Fair Housing Act', status: 'fail' },
-      { name: 'EU AI Act Art. 5', status: 'fail' },
-    ],
+    regulations: [{ name: 'ECOA / Reg B', status: 'fail' }, { name: 'Fair Housing Act', status: 'fail' }, { name: 'EU AI Act Art. 5', status: 'fail' }],
     curves: null
   },
   healthcare: {
@@ -433,11 +512,7 @@ const DEMO = {
     ], proxy_features: ['cost_history', 'insurance_tier', 'bmi_deviation'] },
     explanation: "The healthcare triage dataset shows systematic bias against female patients. Women are prioritized at 63% compared to 78% for men. The cost_history feature is the main driver — lower-income patients historically spend less on healthcare due to access barriers, not lower health needs.\n\nSicker patients from disadvantaged groups are assigned lower triage priority, potentially leading to worse outcomes.\n\nFix: Replace cost_history with acuity-normalized need scores, and recalibrate BMI thresholds derived from male-dominated datasets.",
     fixes: ["Replace cost_history with need-based acuity scoring from clinical indicators only.", "Recalibrate BMI thresholds by gender to correct systematic underdiagnosis in women.", "Remove insurance_tier from triage model — route to billing only after clinical decisions."],
-    regulations: [
-      { name: 'Section 1557 ACA', status: 'fail' },
-      { name: 'EU AI Act Annex III', status: 'fail' },
-      { name: 'HIPAA non-discrim.', status: 'warn' },
-    ],
+    regulations: [{ name: 'Section 1557 ACA', status: 'fail' }, { name: 'EU AI Act Annex III', status: 'fail' }, { name: 'HIPAA non-discrim.', status: 'warn' }],
     curves: null
   }
 };
@@ -478,26 +553,20 @@ async function detectColumns(file) {
   const cols = firstLine.split(',').map(c => c.trim().replace(/"/g, ''));
   const targetSel = document.getElementById('targetSel');
   const sensitiveSel = document.getElementById('sensitiveSel');
-
   targetSel.innerHTML = '<option value="">Select column</option>';
   sensitiveSel.innerHTML = '<option value="">Select column</option>';
   cols.forEach(col => {
     targetSel.add(new Option(col, col));
     sensitiveSel.add(new Option(col, col));
   });
-
   const targetGuess = cols.find(c => ['hired','approved','outcome','label','target','decision','income'].includes(c.toLowerCase()));
   const sensitiveGuess = cols.find(c => ['gender','race','age','sex','ethnicity','caste'].includes(c.toLowerCase()));
   if (targetGuess) targetSel.value = targetGuess;
   if (sensitiveGuess) sensitiveSel.value = sensitiveGuess;
-
-  // ← sensitiveSel2 AFTER sensitiveGuess is defined
   const sensitiveSel2 = document.getElementById('sensitiveSel2');
   sensitiveSel2.innerHTML = '<option value="">(optional)</option>';
   cols.forEach(col => sensitiveSel2.add(new Option(col, col)));
-  const sensitiveGuess2 = cols.find(c =>
-    ['race','ethnicity','caste'].includes(c.toLowerCase()) && c !== sensitiveGuess
-  );
+  const sensitiveGuess2 = cols.find(c => ['race','ethnicity','caste'].includes(c.toLowerCase()) && c !== sensitiveGuess);
   if (sensitiveGuess2) sensitiveSel2.value = sensitiveGuess2;
 }
 
@@ -505,7 +574,6 @@ async function detectColumns(file) {
 async function runAnalysis() {
   const targetCol = document.getElementById('targetSel').value;
   const sensitiveCol = document.getElementById('sensitiveSel').value;
-
   if (!state.file && !targetCol) {
     switchDomain(state.domain, document.querySelector('.pill-btn.active'));
     return;
@@ -534,6 +602,7 @@ async function runAnalysis() {
     state.sensitiveCol2 = sensitiveCol2;
     renderAll();
     showResults();
+    loadWhatifFeatures();
   } catch (err) {
     alert('Could not connect to EquiLens backend.\n\nLoading demo data instead.');
     switchDomain(state.domain, document.querySelector('.pill-btn.active'));
@@ -645,19 +714,11 @@ async function fetchExplanation() {
   } catch(e) {}
 }
 
-// ── REG PILLS — computed from DI ──
+// ── REG PILLS ──
 function renderRegPills(isBiased) {
   const regs = isBiased
-    ? [
-        { name: 'EEOC 80% rule', status: 'fail' },
-        { name: 'EU AI Act Art. 10', status: 'fail' },
-        { name: 'GDPR Art. 22', status: 'warn' },
-      ]
-    : [
-        { name: 'EEOC 80% rule', status: 'pass' },
-        { name: 'EU AI Act Art. 10', status: 'pass' },
-        { name: 'GDPR Art. 22', status: 'pass' },
-      ];
+    ? [{ name: 'EEOC 80% rule', status: 'fail' }, { name: 'EU AI Act Art. 10', status: 'fail' }, { name: 'GDPR Art. 22', status: 'warn' }]
+    : [{ name: 'EEOC 80% rule', status: 'pass' }, { name: 'EU AI Act Art. 10', status: 'pass' }, { name: 'GDPR Art. 22', status: 'pass' }];
   const map = { pass: 'reg-pass', fail: 'reg-fail', warn: 'reg-warn' };
   document.getElementById('regRow').innerHTML = regs.map(r =>
     `<span class="reg-pill ${map[r.status]}">${r.name}: ${r.status.toUpperCase()}</span>`
@@ -684,77 +745,47 @@ function renderMetrics(stats) {
   document.getElementById('metricsAI').classList.remove('pending');
 }
 
-// ── CALIB + ROC — real data from backend ──
+// ── CALIB + ROC ──
 function renderCalibROC(curves, stats) {
   if (state.charts.calib) state.charts.calib.destroy();
   if (state.charts.roc) state.charts.roc.destroy();
-
   const chartColors = ['#6c63ff', '#ff4d6d', '#ffb347', '#00e5b0'];
   const commonOpts = { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#6868a0', boxWidth: 12, font: { size: 10 } } } } };
-
-  // Map encoded keys "0","1" back to real group names from stats
-  const groupNames = stats ? Object.keys(stats.group_stats) : [];
-function labelFor(key) {
-  if (!stats) return key;
-  const groupNames = Object.keys(stats.group_stats);
-  const idx = parseInt(key);
-  if (!isNaN(idx) && groupNames[idx] !== undefined) return groupNames[idx];
-  return key;
-}
-
+  function labelFor(key) {
+    if (!stats) return key;
+    const groupNames = Object.keys(stats.group_stats);
+    const idx = parseInt(key);
+    if (!isNaN(idx) && groupNames[idx] !== undefined) return groupNames[idx];
+    return key;
+  }
   if (curves && curves.calibration && Object.keys(curves.calibration).length > 0) {
     const keys = Object.keys(curves.calibration);
     const calibDatasets = keys.map((k, i) => ({
       label: labelFor(k),
-      data: curves.calibration[k].mean_predicted.map((x, j) => ({
-        x: +(x * 100).toFixed(1),
-        y: +(curves.calibration[k].fraction_positive[j] * 100).toFixed(1)
-      })),
-      borderColor: chartColors[i % chartColors.length],
-      backgroundColor: chartColors[i % chartColors.length],
-      tension: 0.3, pointRadius: 4, fill: false,
-      showLine: true,
-      borderDash: i > 0 ? [4, 3] : []
+      data: curves.calibration[k].mean_predicted.map((x, j) => ({ x: +(x * 100).toFixed(1), y: +(curves.calibration[k].fraction_positive[j] * 100).toFixed(1) })),
+      borderColor: chartColors[i % chartColors.length], backgroundColor: chartColors[i % chartColors.length],
+      tension: 0.3, pointRadius: 4, fill: false, showLine: true, borderDash: i > 0 ? [4, 3] : []
     }));
-    calibDatasets.push({
-      label: 'Perfect',
-      data: [{x:0,y:0},{x:100,y:100}],
-      borderColor: 'rgba(255,255,255,0.15)',
-      tension: 0, pointRadius: 0, borderDash: [2,4], fill: false, showLine: true
-    });
+    calibDatasets.push({ label: 'Perfect', data: [{x:0,y:0},{x:100,y:100}], borderColor: 'rgba(255,255,255,0.15)', tension: 0, pointRadius: 0, borderDash: [2,4], fill: false, showLine: true });
     state.charts.calib = new Chart(document.getElementById('calibChart'), {
-      type: 'scatter',
-      data: { datasets: calibDatasets },
+      type: 'scatter', data: { datasets: calibDatasets },
       options: { ...commonOpts, scales: {
         x: { title: { display: true, text: 'Mean predicted', color: '#6868a0', font: { size: 11 } }, min: 0, max: 100, ticks: { color: '#6868a0', callback: v => v+'%', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } },
         y: { title: { display: true, text: 'Fraction positive', color: '#6868a0', font: { size: 11 } }, min: 0, max: 100, ticks: { color: '#6868a0', callback: v => v+'%', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } }
       }}
     });
   }
-
   if (curves && curves.roc && Object.keys(curves.roc).length > 0) {
     const keys = Object.keys(curves.roc);
     const rocDatasets = keys.map((k, i) => ({
       label: `${labelFor(k)} (AUC ${curves.roc[k].auc})`,
-      data: curves.roc[k].fpr.map((x, j) => ({
-        x: +(x * 100).toFixed(1),
-        y: +(curves.roc[k].tpr[j] * 100).toFixed(1)
-      })),
-      borderColor: chartColors[i % chartColors.length],
-      backgroundColor: chartColors[i % chartColors.length],
-      tension: 0.3, pointRadius: 2, fill: false,
-      showLine: true,
-      borderDash: i > 0 ? [4, 3] : []
+      data: curves.roc[k].fpr.map((x, j) => ({ x: +(x * 100).toFixed(1), y: +(curves.roc[k].tpr[j] * 100).toFixed(1) })),
+      borderColor: chartColors[i % chartColors.length], backgroundColor: chartColors[i % chartColors.length],
+      tension: 0.3, pointRadius: 2, fill: false, showLine: true, borderDash: i > 0 ? [4, 3] : []
     }));
-    rocDatasets.push({
-      label: 'Random',
-      data: [{x:0,y:0},{x:100,y:100}],
-      borderColor: 'rgba(255,255,255,0.1)',
-      tension: 0, pointRadius: 0, borderDash: [2,4], fill: false, showLine: true
-    });
+    rocDatasets.push({ label: 'Random', data: [{x:0,y:0},{x:100,y:100}], borderColor: 'rgba(255,255,255,0.1)', tension: 0, pointRadius: 0, borderDash: [2,4], fill: false, showLine: true });
     state.charts.roc = new Chart(document.getElementById('rocChart'), {
-      type: 'scatter',
-      data: { datasets: rocDatasets },
+      type: 'scatter', data: { datasets: rocDatasets },
       options: { ...commonOpts, scales: {
         x: { title: { display: true, text: 'FPR', color: '#6868a0', font: { size: 11 } }, min: 0, max: 100, ticks: { color: '#6868a0', callback: v => v+'%', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } },
         y: { title: { display: true, text: 'TPR', color: '#6868a0', font: { size: 11 } }, min: 0, max: 100, ticks: { color: '#6868a0', callback: v => v+'%', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } }
@@ -762,11 +793,11 @@ function labelFor(key) {
     });
   }
 }
-// ── SHAP — uses real proxy_features from backend ──
+
+// ── SHAP ──
 function renderSHAP(shap) {
   if (!shap || !shap.top_features) return;
   const features = shap.top_features;
-  // Use proxy_features from backend if available, else fallback to keyword match
   const backendProxies = shap.proxy_features || [];
   const maxVal = Math.max(...features.map(f => f.importance));
   document.getElementById('shapRows').innerHTML = features.map(f => {
@@ -782,7 +813,6 @@ function renderSHAP(shap) {
       <div class="shap-val" style="color:${isNeg ? 'var(--accent2)' : 'var(--danger)'}">${isNeg ? '-' : '+'}${f.importance.toFixed(3)}</div>
     </div>`;
   }).join('');
-
   if (backendProxies.length > 0) {
     document.getElementById('shapAI').textContent = `${backendProxies.length} proxy variable${backendProxies.length > 1 ? 's' : ''} detected: ${backendProxies.join(', ')}. These features correlate with protected attributes and should be removed or replaced to reduce indirect discrimination.`;
   } else {
@@ -791,36 +821,26 @@ function renderSHAP(shap) {
   document.getElementById('shapAI').classList.remove('pending');
 }
 
-// ── INTERSECTIONALITY — real 2-attribute matrix or single fallback ──
+// ── INTERSECTIONALITY ──
 function renderIntersect(stats, intersectionality) {
-
   function cellBg(v) {
     if (v === null) return 'rgba(255,255,255,0.03)';
-    if (v >= 0.7)   return 'rgba(64,217,139,0.25)';
-    if (v >= 0.6)   return 'rgba(64,217,139,0.15)';
-    if (v >= 0.5)   return 'rgba(255,179,71,0.2)';
-    if (v >= 0.4)   return 'rgba(255,77,109,0.2)';
+    if (v >= 0.7) return 'rgba(64,217,139,0.25)';
+    if (v >= 0.6) return 'rgba(64,217,139,0.15)';
+    if (v >= 0.5) return 'rgba(255,179,71,0.2)';
+    if (v >= 0.4) return 'rgba(255,77,109,0.2)';
     return 'rgba(255,77,109,0.35)';
   }
   function cellColor(v) {
     if (v === null) return 'var(--muted)';
-    if (v >= 0.6)   return 'var(--success)';
-    if (v >= 0.5)   return 'var(--warn)';
+    if (v >= 0.6) return 'var(--success)';
+    if (v >= 0.5) return 'var(--warn)';
     return 'var(--danger)';
   }
-
-  // ── TRUE INTERSECTIONALITY: 2 sensitive columns ──
   if (intersectionality && intersectionality.matrix) {
     const { col1, col2, col1_values, col2_values, matrix, groups } = intersectionality;
-
     document.getElementById('intersectBadge').textContent = `${col1} × ${col2}`;
-
-    // Heatmap: rows = col1 (e.g. sex), columns = col2 (e.g. race)
-    const hdr = `<div class="hmap-header">
-      <div class="hmap-col-lbl" style="min-width:100px;flex:0"></div>
-      ${col2_values.map(c => `<div class="hmap-col-lbl">${c}</div>`).join('')}
-    </div>`;
-
+    const hdr = `<div class="hmap-header"><div class="hmap-col-lbl" style="min-width:100px;flex:0"></div>${col2_values.map(c => `<div class="hmap-col-lbl">${c}</div>`).join('')}</div>`;
     const rows = col1_values.map(r => `
       <div class="hmap-row">
         <div class="hmap-lbl">${r}</div>
@@ -830,102 +850,201 @@ function renderIntersect(stats, intersectionality) {
           return `<div class="hmap-cell" style="background:${cellBg(v)};color:${cellColor(v)}">${display}</div>`;
         }).join('')}
       </div>`).join('');
-
     document.getElementById('heatmapWrap').innerHTML = hdr + rows;
-
-    // Subgroup table — all valid cross-groups ranked worst → best
-    const valid = Object.entries(groups)
-      .filter(([, v]) => v.positive_rate !== null)
-      .sort(([, a], [, b]) => a.positive_rate - b.positive_rate);
-
+    const valid = Object.entries(groups).filter(([, v]) => v.positive_rate !== null).sort(([, a], [, b]) => a.positive_rate - b.positive_rate);
     const maxRate = valid.length > 0 ? valid[valid.length - 1][1].positive_rate : 1;
-
     document.getElementById('subgroupTable').innerHTML = `
-      <thead><tr>
-        <th>Subgroup</th><th>Count</th>
-        <th>Approval rate</th><th>vs privileged</th><th>Risk</th>
-      </tr></thead>
+      <thead><tr><th>Subgroup</th><th>Count</th><th>Approval rate</th><th>vs privileged</th><th>Risk</th></tr></thead>
       <tbody>${valid.map(([name, v]) => {
         const diff = ((v.positive_rate - maxRate) * 100).toFixed(1);
-        const risk = v.positive_rate < 0.3
-          ? ['tag-red', 'High']
-          : v.positive_rate < 0.6
-          ? ['tag-amber', 'Medium']
-          : ['tag-green', 'Low'];
-        return `<tr>
-          <td style="font-weight:600">${name}</td>
-          <td style="font-family:var(--mono);color:var(--muted)">${v.count.toLocaleString()}</td>
-          <td style="font-family:var(--mono)">${(v.positive_rate * 100).toFixed(1)}%</td>
-          <td style="font-family:var(--mono);color:${diff < 0 ? 'var(--danger)' : 'var(--success)'}">${diff}pp</td>
-          <td><span class="tag ${risk[0]}">${risk[1]}</span></td>
-        </tr>`;
+        const risk = v.positive_rate < 0.3 ? ['tag-red', 'High'] : v.positive_rate < 0.6 ? ['tag-amber', 'Medium'] : ['tag-green', 'Low'];
+        return `<tr><td style="font-weight:600">${name}</td><td style="font-family:var(--mono);color:var(--muted)">${v.count.toLocaleString()}</td><td style="font-family:var(--mono)">${(v.positive_rate * 100).toFixed(1)}%</td><td style="font-family:var(--mono);color:${diff < 0 ? 'var(--danger)' : 'var(--success)'}">${diff}pp</td><td><span class="tag ${risk[0]}">${risk[1]}</span></td></tr>`;
       }).join('')}</tbody>`;
-
-    // AI insight
     if (valid.length > 0) {
-      const worst = valid[0];
-      const best  = valid[valid.length - 1];
-      const gap   = ((best[1].positive_rate - worst[1].positive_rate) * 100).toFixed(1);
-      document.getElementById('intersectAI').textContent =
-        `Intersectional analysis across ${col1} × ${col2} reveals ${valid.length} subgroups. ` +
-        `Most disadvantaged: "${worst[0]}" at ${(worst[1].positive_rate * 100).toFixed(1)}% approval (n=${worst[1].count.toLocaleString()}). ` +
-        `Most privileged: "${best[0]}" at ${(best[1].positive_rate * 100).toFixed(1)}%. ` +
-        `A gap of ${gap} percentage points — intersecting identities compound disadvantage beyond what single-attribute analysis reveals.`;
+      const worst = valid[0]; const best = valid[valid.length - 1];
+      const gap = ((best[1].positive_rate - worst[1].positive_rate) * 100).toFixed(1);
+      document.getElementById('intersectAI').textContent = `Intersectional analysis across ${col1} × ${col2} reveals ${valid.length} subgroups. Most disadvantaged: "${worst[0]}" at ${(worst[1].positive_rate * 100).toFixed(1)}% approval (n=${worst[1].count.toLocaleString()}). Most privileged: "${best[0]}" at ${(best[1].positive_rate * 100).toFixed(1)}%. A gap of ${gap} percentage points — intersecting identities compound disadvantage beyond what single-attribute analysis reveals.`;
     }
-
   } else {
-    // ── FALLBACK: only one sensitive column selected ──
     const groups = Object.keys(stats.group_stats);
     document.getElementById('intersectBadge').textContent = groups.join(' × ');
-
-    const hdr = `<div class="hmap-header">
-      ${groups.map(g => `<div class="hmap-col-lbl">${g}</div>`).join('')}
-    </div>`;
-    const singleRow = `<div class="hmap-row">
-      <div class="hmap-lbl">Approval</div>
-      ${groups.map(g => {
-        const v = stats.group_stats[g].positive_rate;
-        return `<div class="hmap-cell" style="background:${cellBg(v)};color:${cellColor(v)}">${(v*100).toFixed(0)}%</div>`;
-      }).join('')}
-    </div>`;
+    const hdr = `<div class="hmap-header">${groups.map(g => `<div class="hmap-col-lbl">${g}</div>`).join('')}</div>`;
+    const singleRow = `<div class="hmap-row"><div class="hmap-lbl">Approval</div>${groups.map(g => { const v = stats.group_stats[g].positive_rate; return `<div class="hmap-cell" style="background:${cellBg(v)};color:${cellColor(v)}">${(v*100).toFixed(0)}%</div>`; }).join('')}</div>`;
     document.getElementById('heatmapWrap').innerHTML = hdr + singleRow;
-
-    const sorted = [...groups].sort((a, b) =>
-      stats.group_stats[a].positive_rate - stats.group_stats[b].positive_rate);
+    const sorted = [...groups].sort((a, b) => stats.group_stats[a].positive_rate - stats.group_stats[b].positive_rate);
     const maxRate = stats.group_stats[sorted[sorted.length - 1]].positive_rate;
-
     document.getElementById('subgroupTable').innerHTML = `
       <thead><tr><th>Group</th><th>Approval rate</th><th>vs privileged</th><th>Risk</th></tr></thead>
       <tbody>${sorted.map(g => {
         const rate = stats.group_stats[g].positive_rate;
         const diff = ((rate - maxRate) * 100).toFixed(1);
         const risk = rate < 0.4 ? ['tag-red', 'High'] : rate < 0.6 ? ['tag-amber', 'Medium'] : ['tag-green', 'Low'];
-        return `<tr>
-          <td style="font-weight:600">${g}</td>
-          <td style="font-family:var(--mono)">${(rate*100).toFixed(1)}%</td>
-          <td style="font-family:var(--mono);color:${diff < 0 ? 'var(--danger)' : 'var(--success)'}">${diff}pp</td>
-          <td><span class="tag ${risk[0]}">${risk[1]}</span></td>
-        </tr>`;
+        return `<tr><td style="font-weight:600">${g}</td><td style="font-family:var(--mono)">${(rate*100).toFixed(1)}%</td><td style="font-family:var(--mono);color:${diff < 0 ? 'var(--danger)' : 'var(--success)'}">${diff}pp</td><td><span class="tag ${risk[0]}">${risk[1]}</span></td></tr>`;
       }).join('')}</tbody>`;
-
-    const least = sorted[0];
-    const most  = sorted[sorted.length - 1];
-    const gap   = ((stats.group_stats[most].positive_rate - stats.group_stats[least].positive_rate) * 100).toFixed(1);
-    document.getElementById('intersectAI').textContent =
-      `Single-attribute analysis: ${most} has the highest approval rate at ${(stats.group_stats[most].positive_rate*100).toFixed(1)}%, ` +
-      `while ${least} has the lowest at ${(stats.group_stats[least].positive_rate*100).toFixed(1)}% — a gap of ${gap}pp. ` +
-      `Select a second sensitive attribute (e.g. race) to reveal compounded intersectional disadvantage.`;
+    const least = sorted[0]; const most = sorted[sorted.length - 1];
+    const gap = ((stats.group_stats[most].positive_rate - stats.group_stats[least].positive_rate) * 100).toFixed(1);
+    document.getElementById('intersectAI').textContent = `Single-attribute analysis: ${most} has the highest approval rate at ${(stats.group_stats[most].positive_rate*100).toFixed(1)}%, while ${least} has the lowest at ${(stats.group_stats[least].positive_rate*100).toFixed(1)}% — a gap of ${gap}pp. Select a second sensitive attribute (e.g. race) to reveal compounded intersectional disadvantage.`;
   }
-
   document.getElementById('intersectAI').classList.remove('pending');
 }
 
-// ── REMEDIATION — uses real fixes from backend ──
+// ── WHAT-IF ──
+async function loadWhatifFeatures() {
+  try {
+    const res = await fetch(`${API_BASE}/whatif/features`);
+    if (!res.ok) return;
+    const data = await res.json();
+    renderWiFeatures(data.features);
+  } catch(e) {}
+}
+
+function renderWiFeatures(features) {
+  if (!features || features.length === 0) return;
+  document.getElementById('wiNoDataMsg').style.display = 'none';
+  document.getElementById('wiFeatureSection').style.display = 'block';
+  document.getElementById('wiFeatureGrid').innerHTML = features.map(f => `
+    <label class="wi-check" onclick="toggleWiFeature(this)">
+      <input type="checkbox" value="${f}">
+      <div class="wi-check-box"></div>
+      <span class="wi-check-label">${f}</span>
+    </label>`).join('');
+  updateWiCount();
+}
+
+function toggleWiFeature(el) {
+  const cb = el.querySelector('input');
+  cb.checked = !cb.checked;
+  el.classList.toggle('selected', cb.checked);
+  updateWiCount();
+}
+
+function updateWiCount() {
+  const n = document.querySelectorAll('.wi-check.selected').length;
+  document.getElementById('wiSelectedCount').textContent = n === 0
+    ? '0 features selected'
+    : `${n} feature${n > 1 ? 's' : ''} selected`;
+}
+
+async function runWhatif() {
+  const selected = [...document.querySelectorAll('.wi-check.selected input')].map(el => el.value);
+  if (selected.length === 0) { alert('Select at least one feature to drop.'); return; }
+
+  const btn = document.getElementById('wiRunBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Simulating...';
+
+  try {
+    const res = await fetch(`${API_BASE}/whatif`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ drop_features: selected, audience: state.audience })
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      alert(err.detail || 'Simulation failed');
+      return;
+    }
+    const data = await res.json();
+    renderWiResults(data);
+  } catch(e) {
+    alert('Could not reach backend. Make sure /analyze has been run first.');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 4h14M1 8h10M1 12h6"/></svg> Simulate';
+  }
+}
+
+function renderWiResults(data) {
+  const { original, modified, delta, remaining_features, explanation } = data;
+  document.getElementById('wiResults').style.display = 'block';
+
+  // Delta cards
+  const metrics = [
+    {
+      name: 'Disparate Impact', origVal: original.di, newVal: modified.di, delta: delta.di,
+      fmt: v => v.toFixed(3), higherBetter: true,
+      note: modified.di >= 0.8
+        ? '✓ Now above legal threshold'
+        : delta.di > 0.005 ? `+${delta.di.toFixed(3)} improvement` : delta.di < -0.005 ? `${delta.di.toFixed(3)} regression` : 'No change'
+    },
+    {
+      name: 'Stat. Parity Diff', origVal: original.spd, newVal: modified.spd, delta: -delta.spd,
+      fmt: v => (v * 100).toFixed(1) + '%', higherBetter: false,
+      note: delta.spd > 0.005 ? `−${(delta.spd*100).toFixed(1)}pp gap` : delta.spd < -0.005 ? `+${(Math.abs(delta.spd)*100).toFixed(1)}pp gap` : 'No change'
+    },
+    {
+      name: 'Equalized Odds', origVal: original.eod, newVal: modified.eod, delta: -delta.eod,
+      fmt: v => (v * 100).toFixed(1) + '%', higherBetter: false,
+      note: delta.eod > 0.005 ? `−${(delta.eod*100).toFixed(1)}pp error gap` : delta.eod < -0.005 ? `+${(Math.abs(delta.eod)*100).toFixed(1)}pp error gap` : 'No change'
+    },
+  ];
+
+  document.getElementById('wiDeltaGrid').innerHTML = metrics.map(m => {
+    const improved = m.higherBetter ? m.delta > 0.005 : m.delta < -0.005;
+    const worsened = m.higherBetter ? m.delta < -0.005 : m.delta > 0.005;
+    const cls = improved ? 'better' : worsened ? 'worse' : 'same';
+    return `<div class="wi-delta-card">
+      <div class="wi-delta-metric">${m.name}</div>
+      <div class="wi-delta-row">
+        <div class="wi-delta-before">${m.fmt(m.origVal)}</div>
+        <div class="wi-delta-arrow">→</div>
+        <div class="wi-delta-after ${cls}">${m.fmt(m.newVal)}</div>
+      </div>
+      <div class="wi-delta-change ${cls}">${m.note}</div>
+    </div>`;
+  }).join('');
+
+  // Radar charts
+  function severityScore(s) { return s === 'low' ? 90 : s === 'medium' ? 55 : 20; }
+  const radarLabels = ['Disp. Impact', 'Parity', 'Equal Odds', 'Severity'];
+  const beforeVals = [Math.round(original.di * 100), Math.round((1 - original.spd) * 100), Math.round((1 - original.eod) * 100), severityScore(original.severity)];
+  const afterVals  = [Math.round(modified.di * 100), Math.round((1 - modified.spd) * 100), Math.round((1 - modified.eod) * 100), severityScore(modified.severity)];
+
+  function makeRadar(canvasId, vals, color) {
+    return new Chart(document.getElementById(canvasId), {
+      type: 'radar',
+      data: {
+        labels: radarLabels,
+        datasets: [{ label: '', data: vals, borderColor: color, backgroundColor: color + '14', pointBackgroundColor: color }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: { r: { min: 0, max: 100, ticks: { display: false }, grid: { color: 'rgba(255,255,255,0.06)' }, pointLabels: { color: '#6868a0', font: { size: 11, family: 'IBM Plex Mono' } }, angleLines: { color: 'rgba(255,255,255,0.04)' } } }
+      }
+    });
+  }
+
+  if (state.charts.wiBefore) state.charts.wiBefore.destroy();
+  if (state.charts.wiAfter)  state.charts.wiAfter.destroy();
+  state.charts.wiBefore = makeRadar('wiBeforeChart', beforeVals, '#ff4d6d');
+  state.charts.wiAfter  = makeRadar('wiAfterChart',  afterVals,  '#40d98b');
+
+  // Remaining features list
+  document.getElementById('wiRemainingBadge').textContent = remaining_features.length + ' remaining';
+  document.getElementById('wiRemainingList').innerHTML = remaining_features
+    .map(f => `<span style="display:inline-block;margin-right:18px;padding:3px 0;color:var(--text);">${f}</span>`)
+    .join('');
+
+  // Gemini explanation
+  const exEl = document.getElementById('wiExplanation');
+  exEl.classList.remove('pending');
+  exEl.textContent = explanation || 'No explanation returned.';
+}
+
+function clearWhatif() {
+  document.querySelectorAll('.wi-check').forEach(el => {
+    el.classList.remove('selected');
+    el.querySelector('input').checked = false;
+  });
+  updateWiCount();
+  document.getElementById('wiResults').style.display = 'none';
+}
+
+// ── REMEDIATION ──
 function renderRemediation(d) {
   const stats = d.stats;
   const fixes = d.fixes || [];
-
-  // Build remediation steps from real backend fixes
   const steps = fixes.map(fix => ({ title: fix, desc: '', impact: '' }));
   document.getElementById('remedBadge').textContent = steps.length + ' actions';
   document.getElementById('remedSteps').innerHTML = steps.length > 0
@@ -940,7 +1059,6 @@ function renderRemediation(d) {
       </div>`).join('')
     : '<div style="color:var(--muted);font-size:13px;padding:16px 0;">No remediation steps available. Run analysis first.</div>';
 
-  // Radar charts use real DI/SPD values
   const m = stats;
   const beforeVals = [Math.round(m.di * 100), Math.round((1 - m.spd) * 100), Math.round((1 - m.spd * 0.85) * 100), Math.round(Math.max(50, (1 - m.spd * 0.4)) * 100)];
   const afterVals = beforeVals.map((v, i) => Math.min(100, v + [18, 16, 22, 7][i]));
@@ -966,11 +1084,9 @@ function renderRemediation(d) {
   };
 
   state.charts.before = new Chart(document.getElementById('beforeChart'), JSON.parse(JSON.stringify(radarOpts)));
-  state.charts.after = new Chart(document.getElementById('afterChart'), JSON.parse(JSON.stringify(radarOpts)));
+  state.charts.after  = new Chart(document.getElementById('afterChart'),  JSON.parse(JSON.stringify(radarOpts)));
 
-  document.getElementById('remedAI').textContent = fixes.length > 0
-    ? fixes.join(' ')
-    : 'No remediation suggestions available.';
+  document.getElementById('remedAI').textContent = fixes.length > 0 ? fixes.join(' ') : 'No remediation suggestions available.';
   document.getElementById('remedAI').classList.remove('pending');
 }
 

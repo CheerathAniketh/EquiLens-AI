@@ -141,3 +141,97 @@ Example format: ["fix 1", "fix 2", "fix 3"]
         if _is_api_error(e):
             return _fallback_fixes(bias_report, shap_data)
         raise e
+
+
+def explain_whatif(original, modified, delta, dropped_features, audience="ngo"):
+    """
+    Explain what changed in bias metrics after dropping specific features.
+    Returns a plain-language summary of the before/after comparison.
+    """
+    persona = PERSONAS.get(audience, PERSONAS["ngo"])
+    dropped_str = ", ".join(dropped_features)
+
+    improved = []
+    worsened = []
+
+    if delta["spd"] > 0.01:
+        improved.append(f"outcome gap narrowed by {abs(delta['spd']):.3f} points")
+    elif delta["spd"] < -0.01:
+        worsened.append(f"outcome gap widened by {abs(delta['spd']):.3f} points")
+
+    if delta["di"] > 0.01:
+        improved.append(f"Disparate Impact improved from {original['di']:.3f} to {modified['di']:.3f}")
+    elif delta["di"] < -0.01:
+        worsened.append(f"Disparate Impact worsened from {original['di']:.3f} to {modified['di']:.3f}")
+
+    if delta["eod"] > 0.01:
+        improved.append(f"error rate gap between groups dropped by {abs(delta['eod']):.3f}")
+    elif delta["eod"] < -0.01:
+        worsened.append(f"error rate gap between groups grew by {abs(delta['eod']):.3f}")
+
+    di_threshold_crossed = original["di"] < 0.8 and modified["di"] >= 0.8
+
+    prompt = f"""
+You are an AI fairness expert explaining a what-if simulation to {persona}.
+
+The user removed these features from their dataset: {dropped_str}
+
+Before removing:
+- Disparate Impact: {original['di']} (below 0.8 = discriminatory)
+- Statistical Parity Difference: {original['spd']}
+- Equalized Odds: {original['eod']}
+- Severity: {original['severity']}
+
+After removing:
+- Disparate Impact: {modified['di']}
+- Statistical Parity Difference: {modified['spd']}
+- Equalized Odds: {modified['eod']}
+- Severity: {modified['severity']}
+
+Changes: {{'improved': {improved}, 'worsened': {worsened}}}
+Legal threshold crossed (DI now above 0.8): {di_threshold_crossed}
+
+Write exactly 2 short paragraphs:
+1. What changed after removing these features, and whether it helped reduce bias
+2. Whether the model is now fair enough, and what to do next
+
+Rules:
+- No technical jargon
+- Plain simple language only
+- No bullet points inside paragraphs
+- Each paragraph under 4 sentences
+- Be honest if removing the features made things worse
+"""
+
+    try:
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=prompt
+        )
+        return response.text
+    except Exception as e:
+        if _is_api_error(e):
+            return _fallback_whatif_explanation_gemini(original, modified, delta, dropped_features)
+        raise e
+
+
+def _fallback_whatif_explanation_gemini(original, modified, delta, dropped):
+    """Fallback when Gemini is unavailable for whatif explanations."""
+    dropped_str = ", ".join(dropped)
+    spd_dir = "decreased" if delta["spd"] > 0 else "increased"
+    di_dir  = "improved"  if delta["di"]  > 0 else "worsened"
+    eod_dir = "decreased" if delta["eod"] > 0 else "increased"
+
+    threshold_note = ""
+    if original["di"] < 0.8 and modified["di"] >= 0.8:
+        threshold_note = " The model has now crossed the legal fairness threshold of 0.80 — this is a meaningful improvement."
+    elif modified["di"] < 0.8:
+        threshold_note = f" The Disparate Impact is still below the legal threshold of 0.80 (currently {modified['di']:.3f}), so further action is needed."
+
+    return (
+        f"After removing {dropped_str}, the outcome gap between groups {spd_dir} "
+        f"by {abs(delta['spd']):.3f} points, the Disparate Impact ratio {di_dir} "
+        f"from {original['di']:.3f} to {modified['di']:.3f}, and the error rate gap "
+        f"{eod_dir} from {original['eod']:.3f} to {modified['eod']:.3f}.{threshold_note}\n\n"
+        f"{'These features appear to have been contributing to bias in the model — consider permanently removing them from your dataset.' if delta['di'] > 0 else 'Removing these features did not reduce bias. The discrimination likely comes from other features — try dropping different columns or rebalancing the dataset.'} *"
+    )
