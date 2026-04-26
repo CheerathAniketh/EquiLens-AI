@@ -17,14 +17,15 @@ from reportlab.platypus import (
 from reportlab.lib.enums import TA_LEFT, TA_CENTER, TA_RIGHT
 
 # ── Brand colours ────────────────────────────────────────────────────────────
-TEAL       = colors.HexColor("#0d9488")
-TEAL_LIGHT = colors.HexColor("#ccfbf1")
-RED        = colors.HexColor("#ef4444")
-AMBER      = colors.HexColor("#f59e0b")
-GREEN      = colors.HexColor("#22c55e")
-GRAY_DARK  = colors.HexColor("#1e293b")
-GRAY_MID   = colors.HexColor("#64748b")
-GRAY_LIGHT = colors.HexColor("#f1f5f9")
+TEAL       = colors.HexColor("#165a61")
+TEAL_DARK  = colors.HexColor("#0f3f45")
+TEAL_LIGHT = colors.HexColor("#d9ecec")
+RED        = colors.HexColor("#b42318")
+AMBER      = colors.HexColor("#b66f18")
+GREEN      = colors.HexColor("#13795b")
+GRAY_DARK  = colors.HexColor("#102126")
+GRAY_MID   = colors.HexColor("#475e65")
+GRAY_LIGHT = colors.HexColor("#eef3f4")
 WHITE      = colors.white
 
 
@@ -125,6 +126,37 @@ def _on_page(canvas, doc):
     canvas.restoreState()
 
 
+def _callout_box(title: str, body: str, width: float, background, border_color):
+    title_style = ParagraphStyle(
+        "callout-title",
+        fontSize=10,
+        leading=12,
+        textColor=GRAY_DARK,
+        fontName="Helvetica-Bold",
+    )
+    body_style = ParagraphStyle(
+        "callout-body",
+        fontSize=8.5,
+        leading=12,
+        textColor=GRAY_DARK,
+        fontName="Helvetica",
+    )
+    box = Table(
+        [[Paragraph(title, title_style)], [Paragraph(body, body_style)]],
+        colWidths=[width],
+    )
+    box.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), background),
+        ("BOX", (0, 0), (-1, -1), 0.5, border_color),
+        ("ROUNDEDCORNERS", [4]),
+        ("TOPPADDING", (0, 0), (-1, -1), 7),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 7),
+        ("LEFTPADDING", (0, 0), (-1, -1), 8),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+    ]))
+    return box
+
+
 # ── Public API ────────────────────────────────────────────────────────────────
 def generate_audit_pdf(report_data: dict) -> bytes:
     """
@@ -152,6 +184,8 @@ def generate_audit_pdf(report_data: dict) -> bytes:
     story = []
 
     # ── COVER BLOCK ──────────────────────────────────────────────────────────
+    audience = (report_data.get("audience", "general") or "general").replace("_", " ").title()
+
     cover_bg = Table(
         [[Paragraph("EquiLens AI", S["Title"])],
          [Paragraph("Algorithmic Bias Audit Report", S["Subtitle"])],
@@ -164,6 +198,11 @@ def generate_audit_pdf(report_data: dict) -> bytes:
                             fontName="Helvetica", leading=13),
          )],
          [Paragraph(
+             f"Prepared for <b>{audience}</b>  &nbsp;|&nbsp;  Deployment context: <b>Fairness review before release</b>",
+             ParagraphStyle("coveraud", fontSize=8.5, textColor=colors.HexColor("#d5f4f1"),
+                            fontName="Helvetica", leading=12),
+         )],
+         [Paragraph(
              datetime.now().strftime("Audit generated %d %B %Y at %H:%M"),
              ParagraphStyle("coverdate", fontSize=8,
                             textColor=colors.HexColor("#b2f5ea"),
@@ -173,7 +212,7 @@ def generate_audit_pdf(report_data: dict) -> bytes:
         colWidths=[doc.width],
     )
     cover_bg.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, -1), TEAL),
+        ("BACKGROUND", (0, 0), (-1, -1), TEAL_DARK),
         ("TOPPADDING",    (0, 0), (-1, -1), 6),
         ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
         ("LEFTPADDING",   (0, 0), (-1, -1), 8),
@@ -208,14 +247,33 @@ def generate_audit_pdf(report_data: dict) -> bytes:
     story.append(verdict_row)
     story.append(Spacer(1, 5*mm))
 
+    di  = report_data.get("di",  None)
+    spd = report_data.get("spd", None)
+    eod = report_data.get("eod", None)
+
+    summary_bits = []
+    if di is not None:
+        summary_bits.append(f"Disparate Impact is {di:.3f}")
+    if spd is not None:
+        summary_bits.append(f"Statistical Parity Difference is {spd*100:.1f}%")
+    summary_sentence = (
+        "This dataset should be reviewed before deployment because the current fairness checks point to a meaningful subgroup disparity."
+        if bias_detected else
+        "The current fairness checks do not show a major subgroup disparity, but the audit should still be reviewed before deployment."
+    )
+    story.append(_callout_box(
+        "Executive summary",
+        f"{summary_sentence} {' and '.join(summary_bits)}. Audience setting for this report: {audience}.",
+        doc.width,
+        TEAL_LIGHT,
+        colors.HexColor("#b9d9d9"),
+    ))
+    story.append(Spacer(1, 4*mm))
+
     # ── METRIC SCORECARDS ────────────────────────────────────────────────────
     story.append(Paragraph("Key Fairness Metrics", S["H2"]))
     story.append(HRFlowable(width="100%", thickness=0.5,
                              color=TEAL_LIGHT, spaceAfter=4))
-
-    di  = report_data.get("di",  None)
-    spd = report_data.get("spd", None)
-    eod = report_data.get("eod", None)
 
     def _metric_cell(name, value, threshold_note, ok):
         bg = GRAY_LIGHT
@@ -267,6 +325,20 @@ def generate_audit_pdf(report_data: dict) -> bytes:
         ("VALIGN",        (0, 0), (-1, -1), "TOP"),
     ]))
     story.append(metrics_row)
+    story.append(Spacer(1, 5*mm))
+
+    next_step = (
+        "Pause deployment, review the flagged features, and use the remediation guidance before approving the model."
+        if bias_detected else
+        "Keep the current controls in place, review subgroup details, and document this audit as part of your governance record."
+    )
+    story.append(_callout_box(
+        "Recommended next step",
+        next_step,
+        doc.width,
+        colors.white,
+        colors.HexColor("#d6e0e2"),
+    ))
     story.append(Spacer(1, 5*mm))
 
     # ── GROUP APPROVAL RATES ─────────────────────────────────────────────────
@@ -459,6 +531,15 @@ def generate_audit_pdf(report_data: dict) -> bytes:
         ]))
     story.append(reg_table)
     story.append(Spacer(1, 8*mm))
+
+    story.append(_callout_box(
+        "Presentation-ready handoff",
+        "This report is designed to support a board discussion, a classroom review, an NGO briefing, or an internal fairness checkpoint. It combines the fairness verdict, subgroup evidence, and suggested actions in one shareable document.",
+        doc.width,
+        TEAL_LIGHT,
+        colors.HexColor("#b9d9d9"),
+    ))
+    story.append(Spacer(1, 5*mm))
 
     # ── DISCLAIMER ────────────────────────────────────────────────────────────
     story.append(HRFlowable(width="100%", thickness=0.5, color=GRAY_LIGHT))

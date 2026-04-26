@@ -34,6 +34,10 @@ class WhatIfRequest(BaseModel):
     audience: str = "ngo"
 
 
+class ExplanationRequest(BaseModel):
+    audience: str = "ngo"
+
+
 # ─── /analyze ─────────────────────────────────────────────────────────────────
 
 @app.post("/analyze")
@@ -49,6 +53,7 @@ async def analyze(
     session_cache["df"] = df
     session_cache["target_col"] = target_col
     session_cache["sensitive_col"] = sensitive_col
+    session_cache["sensitive_col_2"] = sensitive_col_2
 
     stats = analyze_bias(df, target_col, sensitive_col)
     model, X_train, X_test, y_test, curves, y_pred, y_prob, sensitive_test = train_and_evaluate(
@@ -79,6 +84,12 @@ async def analyze(
             "Collect more representative data from underrepresented groups.",
         ]
 
+    session_cache["stats"] = stats
+    session_cache["shap"] = shap_data
+    session_cache["fixes"] = fixes
+    session_cache["curves"] = curves
+    session_cache["intersectionality"] = intersectionality
+
     return {
         "stats": stats,
         "shap": shap_data,
@@ -86,6 +97,31 @@ async def analyze(
         "fixes": fixes,
         "curves": curves,
         "intersectionality": intersectionality,
+    }
+
+
+@app.post("/explanation")
+async def refresh_explanation(body: ExplanationRequest):
+    if "stats" not in session_cache or "shap" not in session_cache:
+        raise HTTPException(
+            status_code=400,
+            detail="No cached analysis found. Run /analyze first."
+        )
+
+    stats = session_cache["stats"]
+    shap_data = session_cache["shap"]
+
+    try:
+        explanation = explain_results(stats, shap_data, audience=body.audience)
+    except Exception as e:
+        explanation = f"Gemini unavailable: {str(e)}"
+
+    return {
+        "explanation": explanation,
+        "audience": body.audience,
+        "target_col": session_cache.get("target_col", ""),
+        "sensitive_col": session_cache.get("sensitive_col", ""),
+        "sensitive_col_2": session_cache.get("sensitive_col_2", ""),
     }
 # ─── /whatif/features ─────────────────────────────────────────────────────────
 # Defined BEFORE /whatif POST to avoid FastAPI route shadowing.

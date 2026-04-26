@@ -5,105 +5,167 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>EquiLens AI — Bias Detection</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Syne:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <style>
 :root {
-  --bg: #080810;
-  --surface: #0e0e1a;
-  --surface2: #141424;
-  --surface3: #1c1c30;
-  --border: rgba(120,120,255,0.1);
-  --border2: rgba(120,120,255,0.2);
-  --text: #e2e2f0;
-  --muted: #6868a0;
-  --accent: #6c63ff;
-  --accent2: #00e5b0;
-  --danger: #ff4d6d;
-  --warn: #ffb347;
-  --success: #40d98b;
+  --bg: #f3f6f7;
+  --surface: #ffffff;
+  --surface2: #eef3f4;
+  --surface3: #e3eaec;
+  --border: rgba(16, 33, 38, 0.09);
+  --border2: rgba(31, 108, 114, 0.22);
+  --text: #08161b;
+  --muted: #475e65;
+  --accent: #165a61;
+  --accent2: #8b6a3e;
+  --danger: #b42318;
+  --warn: #b66f18;
+  --success: #13795b;
+  --shadow: 0 18px 44px rgba(15, 23, 32, 0.06);
+  --shadow-soft: 0 10px 24px rgba(15, 23, 32, 0.04);
   --mono: 'IBM Plex Mono', monospace;
-  --sans: 'Syne', sans-serif;
+  --sans: 'Manrope', sans-serif;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
-body { background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 14px; line-height: 1.6; min-height: 100vh; overflow-x: hidden; }
-body::before { content: ''; position: fixed; inset: 0; background-image: linear-gradient(rgba(108,99,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(108,99,255,0.03) 1px, transparent 1px); background-size: 40px 40px; pointer-events: none; z-index: 0; }
+body { background: radial-gradient(circle at top left, rgba(31,108,114,0.08), transparent 34%), radial-gradient(circle at top right, rgba(108,143,132,0.08), transparent 26%), var(--bg); color: var(--text); font-family: var(--sans); font-size: 14px; line-height: 1.6; min-height: 100vh; overflow-x: hidden; }
+body::before { content: ''; position: fixed; inset: 0; background-image: linear-gradient(rgba(17,34,40,0.018) 1px, transparent 1px), linear-gradient(90deg, rgba(17,34,40,0.018) 1px, transparent 1px); background-size: 48px 48px; pointer-events: none; z-index: 0; }
 .app { display: grid; grid-template-columns: 240px 1fr; min-height: 100vh; position: relative; z-index: 1; }
-.sidebar { background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh; overflow: hidden; }
+.sidebar { background: rgba(255,255,255,0.82); backdrop-filter: blur(16px); border-right: 1px solid var(--border); display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh; overflow: hidden; }
 .logo-area { padding: 28px 24px 24px; border-bottom: 1px solid var(--border); }
-.logo-name { font-family: var(--sans); font-size: 22px; font-weight: 800; letter-spacing: -0.5px; background: linear-gradient(135deg, #6c63ff 0%, #00e5b0 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
-.logo-tag { font-family: var(--mono); font-size: 10px; color: var(--muted); letter-spacing: 0.15em; text-transform: uppercase; margin-top: 2px; }
-.nav-section-label { font-family: var(--mono); font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); padding: 20px 24px 8px; opacity: 0.6; }
-.nav-item { display: flex; align-items: center; gap: 12px; padding: 11px 24px; cursor: pointer; color: var(--muted); font-size: 13px; font-weight: 500; transition: all 0.15s; border-left: 2px solid transparent; position: relative; }
-.nav-item:hover { color: var(--text); background: var(--surface2); }
-.nav-item.active { color: var(--accent); background: rgba(108,99,255,0.08); border-left-color: var(--accent); }
+.logo-name { font-family: var(--sans); font-size: 22px; font-weight: 800; letter-spacing: -0.04em; color: var(--accent); }
+.logo-tag { font-family: var(--mono); font-size: 10px; color: var(--muted); letter-spacing: 0.15em; text-transform: uppercase; margin-top: 4px; }
+.nav-section-label { font-family: var(--mono); font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase; color: #587078; padding: 20px 24px 8px; opacity: 0.8; }
+.nav-item { display: flex; align-items: center; gap: 12px; padding: 11px 24px; cursor: pointer; color: #30464d; font-size: 13px; font-weight: 600; transition: all 0.15s; border-left: 2px solid transparent; position: relative; }
+.nav-item:hover { color: var(--text); background: rgba(31,108,114,0.08); }
+.nav-item.active { color: var(--accent); background: rgba(31,108,114,0.1); border-left-color: var(--accent); }
 .nav-icon { width: 15px; height: 15px; flex-shrink: 0; opacity: 0.7; }
 .nav-item.active .nav-icon { opacity: 1; }
-.pulse { width: 7px; height: 7px; border-radius: 50%; background: var(--success); margin-left: auto; animation: glow 2s ease-in-out infinite; }
-@keyframes glow { 0%,100%{box-shadow:0 0 4px var(--success);} 50%{box-shadow:0 0 10px var(--success);} }
+.pulse { width: 7px; height: 7px; border-radius: 50%; background: var(--success); margin-left: auto; box-shadow: 0 0 0 4px rgba(19,121,91,0.12); }
+@keyframes glow { 0%,100%{box-shadow:0 0 0 0 rgba(31,108,114,0.18);} 50%{box-shadow:0 0 0 6px rgba(31,108,114,0.05);} }
 .sidebar-bottom { margin-top: auto; padding: 20px 24px; border-top: 1px solid var(--border); font-family: var(--mono); font-size: 10px; color: var(--muted); }
 .main { overflow-x: hidden; }
-.topbar { display: flex; align-items: center; justify-content: space-between; padding: 16px 32px; border-bottom: 1px solid var(--border); background: var(--surface); position: sticky; top: 0; z-index: 10; }
+.topbar { display: flex; align-items: center; justify-content: space-between; padding: 16px 32px; border-bottom: 1px solid var(--border); background: rgba(255,255,255,0.78); backdrop-filter: blur(16px); position: sticky; top: 0; z-index: 10; }
 .breadcrumb { font-family: var(--mono); font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 8px; }
 .breadcrumb span { color: var(--text); }
+.mobile-nav { display: none; padding: 12px 32px 0; gap: 8px; overflow-x: auto; scrollbar-width: none; }
+.mobile-nav::-webkit-scrollbar { display: none; }
+.mobile-nav-btn { white-space: nowrap; padding: 9px 14px; border-radius: 999px; border: 1px solid var(--border); background: rgba(255,255,255,0.9); color: var(--muted); cursor: pointer; font-family: var(--mono); font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; transition: all 0.15s; }
+.mobile-nav-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); box-shadow: 0 10px 18px rgba(22,90,97,0.14); }
 .domain-pills { display: flex; gap: 6px; }
-.pill-btn { padding: 5px 14px; border-radius: 20px; border: 1px solid var(--border2); background: transparent; color: var(--muted); cursor: pointer; font-family: var(--sans); font-size: 12px; font-weight: 500; transition: all 0.15s; }
-.pill-btn:hover { color: var(--text); border-color: rgba(108,99,255,0.4); }
+.pill-btn { padding: 6px 14px; border-radius: 20px; border: 1px solid var(--border); background: rgba(255,255,255,0.8); color: var(--muted); cursor: pointer; font-family: var(--sans); font-size: 12px; font-weight: 600; transition: all 0.15s; }
+.pill-btn:hover { color: var(--text); border-color: var(--border2); }
 .pill-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
-.upload-bar { display: flex; align-items: center; gap: 16px; padding: 14px 32px; background: var(--surface2); border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+.upload-bar { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 2fr); gap: 18px; padding: 22px 32px; background: linear-gradient(180deg, rgba(255,255,255,0.86), rgba(255,255,255,0.7)); border-bottom: 1px solid var(--border); }
+.setup-intro { display: flex; flex-direction: column; gap: 10px; padding: 8px 4px 8px 0; }
+.setup-kicker { font-family: var(--mono); font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--accent); }
+.setup-title { font-size: 29px; font-weight: 800; line-height: 1.08; letter-spacing: -0.03em; color: var(--text); max-width: 14ch; }
+.setup-copy { font-size: 14px; color: var(--muted); line-height: 1.8; max-width: 52ch; }
+.setup-badges { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 2px; }
+.setup-badge { padding: 6px 10px; border-radius: 999px; background: rgba(22,90,97,0.05); color: var(--text); border: 1px solid rgba(22,90,97,0.1); font-family: var(--mono); font-size: 10px; }
+.setup-card { background: linear-gradient(180deg, rgba(255,255,255,0.96), rgba(248,251,251,0.94)); border: 1px solid rgba(22,90,97,0.16); border-radius: 24px; padding: 24px; box-shadow: 0 18px 36px rgba(22,90,97,0.08); position: relative; overflow: hidden; }
+.setup-card::before { content: ''; position: absolute; inset: 0 auto 0 0; width: 4px; background: linear-gradient(180deg, var(--accent), rgba(22,90,97,0.2)); }
+.setup-card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+.setup-card-title { font-size: 19px; font-weight: 800; letter-spacing: -0.03em; }
+.setup-card-note { font-family: var(--mono); font-size: 10px; color: var(--muted); letter-spacing: 0.12em; text-transform: uppercase; }
+.setup-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.setup-field { display: flex; flex-direction: column; gap: 7px; }
+.setup-field-wide { grid-column: 1 / -1; }
 .upload-label { font-family: var(--mono); font-size: 11px; color: var(--muted); }
-.upload-btn { display: flex; align-items: center; gap: 8px; padding: 7px 16px; border-radius: 6px; border: 1px dashed var(--border2); background: transparent; color: var(--muted); cursor: pointer; font-family: var(--mono); font-size: 11px; transition: all 0.15s; }
-.upload-btn:hover { border-color: var(--accent); color: var(--accent); }
+.setup-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 18px; }
+.setup-helper { font-family: var(--mono); font-size: 10px; color: var(--muted); margin-left: auto; }
+.inline-error { display: none; margin-top: 14px; padding: 12px 14px; border-radius: 14px; border: 1px solid rgba(180,35,24,0.16); background: rgba(180,35,24,0.06); color: var(--danger); font-size: 12px; line-height: 1.65; }
+.inline-error.visible { display: block; }
+.inline-note { display: none; margin-top: 14px; padding: 12px 14px; border-radius: 14px; border: 1px solid rgba(22,90,97,0.14); background: rgba(22,90,97,0.05); color: var(--accent); font-size: 12px; line-height: 1.65; }
+.inline-note.visible { display: block; }
+.upload-btn { display: flex; align-items: center; gap: 8px; width: 100%; justify-content: flex-start; padding: 13px 16px; border-radius: 14px; border: 1px dashed var(--border2); background: rgba(22,90,97,0.04); color: var(--text); cursor: pointer; font-family: var(--mono); font-size: 12px; transition: all 0.15s; }
+.upload-btn:hover { border-color: var(--accent); color: var(--accent); background: rgba(31,108,114,0.06); }
 .upload-btn.has-file { border-style: solid; border-color: var(--success); color: var(--success); }
 #fileInput { display: none; }
-.sel { background: var(--surface3); border: 1px solid var(--border2); color: var(--text); padding: 7px 12px; border-radius: 6px; font-family: var(--mono); font-size: 11px; cursor: pointer; outline: none; }
+.sel { background: rgba(255,255,255,0.98); border: 1px solid rgba(16,33,38,0.12); color: var(--text); padding: 12px 13px; border-radius: 14px; font-family: var(--mono); font-size: 11px; cursor: pointer; outline: none; }
 .sel:focus { border-color: var(--accent); }
-.run-btn { padding: 8px 24px; border-radius: 6px; border: none; background: var(--accent); color: #fff; cursor: pointer; font-family: var(--sans); font-size: 13px; font-weight: 600; transition: all 0.2s; display: flex; align-items: center; gap: 8px; }
-.run-btn:hover { background: #7c74ff; transform: translateY(-1px); }
+.run-btn { padding: 10px 22px; border-radius: 10px; border: none; background: var(--accent); color: #fff; cursor: pointer; font-family: var(--sans); font-size: 13px; font-weight: 700; transition: all 0.2s; display: flex; align-items: center; gap: 8px; box-shadow: 0 12px 24px rgba(31,108,114,0.2); }
+.run-btn:hover { background: #255f64; transform: translateY(-1px); }
 .run-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
-.run-btn.running { background: var(--surface3); color: var(--accent); border: 1px solid var(--accent); }
-.export-btn { padding: 8px 18px; border-radius: 6px; border: 1px solid var(--border2); background: transparent; color: var(--muted); cursor: pointer; font-family: var(--sans); font-size: 13px; font-weight: 500; transition: all 0.15s; margin-left: auto; }
-.export-btn:hover { color: var(--text); border-color: rgba(255,255,255,0.2); }
+.run-btn.running { background: var(--surface3); color: var(--accent); border: 1px solid var(--accent); box-shadow: none; }
+.export-btn { padding: 9px 18px; border-radius: 10px; border: 1px solid var(--border); background: rgba(255,255,255,0.86); color: var(--muted); cursor: pointer; font-family: var(--sans); font-size: 13px; font-weight: 600; transition: all 0.15s; margin-left: auto; }
+.export-btn:hover { color: var(--text); border-color: var(--border2); background: rgba(31,108,114,0.03); }
 .content { padding: 28px 32px; }
 .page { display: none; }
-.page.active { display: block; animation: fadeUp 0.2s ease; }
-@keyframes fadeUp { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+.page.active { display: block; animation: fadeUp 0.24s ease; }
+@keyframes fadeUp { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+.skeleton-screen { display: none; margin-bottom: 20px; }
+.skeleton-screen.visible { display: block; }
+.skeleton-card, .skeleton-panel, .skeleton-pill { position: relative; overflow: hidden; background: rgba(255,255,255,0.82); border: 1px solid rgba(16,33,38,0.08); }
+.skeleton-card::after, .skeleton-panel::after, .skeleton-pill::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.78), transparent);
+  animation: shimmer 1.4s infinite;
+}
+@keyframes shimmer {
+  100% { transform: translateX(100%); }
+}
+.skeleton-overview { display: grid; gap: 18px; }
+.skeleton-hero { height: 132px; border-radius: 24px; }
+.skeleton-score-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+.skeleton-card { height: 120px; border-radius: 16px; }
+.skeleton-two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.skeleton-panel { height: 240px; border-radius: 18px; }
+.skeleton-panel.tall { height: 200px; }
+.skeleton-pills { display: flex; gap: 10px; flex-wrap: wrap; }
+.skeleton-pill { width: 116px; height: 34px; border-radius: 999px; }
+.section-notice { display: none; margin-bottom: 16px; padding: 13px 14px; border-radius: 14px; font-size: 12px; line-height: 1.65; }
+.section-notice.visible { display: block; }
+.section-notice.error { background: rgba(180,35,24,0.06); border: 1px solid rgba(180,35,24,0.16); color: var(--danger); }
+.section-notice.info { background: rgba(22,90,97,0.05); border: 1px solid rgba(22,90,97,0.14); color: var(--accent); }
+.overview-lead { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; padding: 24px 26px; margin-bottom: 20px; background: linear-gradient(135deg, rgba(22,90,97,0.08), rgba(255,255,255,0.75)); border: 1px solid rgba(22,90,97,0.12); border-radius: 24px; box-shadow: var(--shadow-soft); }
+.overview-copy { max-width: 60ch; }
+.overview-kicker { font-family: var(--mono); font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--accent); margin-bottom: 10px; }
+.overview-title { font-size: 28px; font-weight: 800; letter-spacing: -0.04em; line-height: 1.06; margin-bottom: 10px; }
+.overview-desc { font-size: 14px; line-height: 1.8; color: var(--muted); }
+.overview-meta { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; min-width: 220px; }
+.overview-chip { padding: 8px 11px; border-radius: 999px; background: rgba(255,255,255,0.85); border: 1px solid rgba(16,33,38,0.08); color: var(--text); font-family: var(--mono); font-size: 10px; }
 .score-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 24px; }
-.score-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 18px; position: relative; overflow: hidden; transition: border-color 0.2s; }
+.score-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 18px; position: relative; overflow: hidden; transition: border-color 0.2s, transform 0.2s; box-shadow: var(--shadow); }
 .score-card:hover { border-color: var(--border2); }
 .score-card::after { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; border-radius: 12px 12px 0 0; }
 .score-card.good::after { background: var(--success); }
 .score-card.warn::after { background: var(--warn); }
 .score-card.bad::after { background: var(--danger); }
 .score-lbl { font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-bottom: 10px; }
-.score-val { font-family: var(--mono); font-size: 28px; font-weight: 600; line-height: 1; }
+.score-val { font-family: var(--sans); font-size: 30px; font-weight: 800; line-height: 1; letter-spacing: -0.04em; }
 .score-val.good { color: var(--success); }
 .score-val.warn { color: var(--warn); }
 .score-val.bad { color: var(--danger); }
-.score-note { font-size: 11px; color: var(--muted); margin-top: 6px; }
+.score-note { font-size: 11px; color: var(--muted); margin-top: 8px; line-height: 1.6; }
 .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 18px; }
 .full { margin-bottom: 18px; }
-.panel { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 22px; }
+.panel { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 22px; box-shadow: var(--shadow); }
 .panel-hd { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); }
+.table-scroll { overflow-x: auto; padding-bottom: 4px; scrollbar-width: thin; }
 .badge { padding: 2px 8px; border-radius: 4px; font-size: 10px; font-family: var(--mono); }
-.badge-red { background: rgba(255,77,109,0.12); color: var(--danger); border: 1px solid rgba(255,77,109,0.2); }
-.badge-amber { background: rgba(255,179,71,0.12); color: var(--warn); border: 1px solid rgba(255,179,71,0.2); }
-.badge-green { background: rgba(64,217,139,0.12); color: var(--success); border: 1px solid rgba(64,217,139,0.2); }
-.badge-purple { background: rgba(108,99,255,0.12); color: var(--accent); border: 1px solid rgba(108,99,255,0.2); }
-.badge-teal { background: rgba(0,229,176,0.12); color: var(--accent2); border: 1px solid rgba(0,229,176,0.2); }
+.badge-red { background: rgba(180,35,24,0.08); color: var(--danger); border: 1px solid rgba(180,35,24,0.15); }
+.badge-amber { background: rgba(182,111,24,0.08); color: var(--warn); border: 1px solid rgba(182,111,24,0.16); }
+.badge-green { background: rgba(19,121,91,0.08); color: var(--success); border: 1px solid rgba(19,121,91,0.15); }
+.badge-purple { background: rgba(31,108,114,0.08); color: var(--accent); border: 1px solid rgba(31,108,114,0.16); }
+.badge-teal { background: rgba(108,143,132,0.08); color: var(--accent2); border: 1px solid rgba(108,143,132,0.16); }
 .chart-wrap { position: relative; width: 100%; height: 200px; }
-.gtable { width: 100%; border-collapse: collapse; font-size: 12px; }
+.gtable { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 420px; }
 .gtable th { text-align: left; padding: 8px 10px; color: var(--muted); font-weight: 500; font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; border-bottom: 1px solid var(--border); font-family: var(--mono); }
 .gtable td { padding: 10px 10px; border-bottom: 1px solid var(--border); }
 .gtable tr:last-child td { border-bottom: none; }
-.gtable tr:hover td { background: var(--surface2); }
+.gtable tr:hover td { background: rgba(31,108,114,0.04); }
 .tag { display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 10px; font-family: var(--mono); }
-.tag-red { background: rgba(255,77,109,0.1); color: var(--danger); }
-.tag-green { background: rgba(64,217,139,0.1); color: var(--success); }
-.tag-amber { background: rgba(255,179,71,0.1); color: var(--warn); }
+.tag-red { background: rgba(180,35,24,0.08); color: var(--danger); }
+.tag-green { background: rgba(19,121,91,0.08); color: var(--success); }
+.tag-amber { background: rgba(182,111,24,0.08); color: var(--warn); }
 .m-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); }
 .m-row:last-child { border-bottom: none; }
 .m-name { flex: 1; font-size: 13px; }
+.m-threshold { display: block; margin-top: 4px; font-family: var(--mono); font-size: 10px; color: var(--muted); }
 .m-track { flex: 2; height: 5px; background: var(--surface3); border-radius: 3px; overflow: hidden; }
 .m-fill { height: 100%; border-radius: 3px; transition: width 1s cubic-bezier(0.4,0,0.2,1); }
 .m-val { font-family: var(--mono); font-size: 12px; min-width: 40px; text-align: right; }
@@ -116,50 +178,128 @@ body::before { content: ''; position: fixed; inset: 0; background-image: linear-
 .shap-pos { position: absolute; left: 50%; top: 2px; height: 10px; border-radius: 2px; background: var(--danger); }
 .shap-neg { position: absolute; right: 50%; top: 2px; height: 10px; border-radius: 2px; background: var(--accent2); }
 .shap-val { font-family: var(--mono); font-size: 11px; min-width: 50px; text-align: right; }
-.ai-box { background: linear-gradient(135deg, rgba(108,99,255,0.06), rgba(0,229,176,0.03)); border: 1px solid rgba(108,99,255,0.2); border-radius: 10px; padding: 18px; margin-top: 16px; }
+.ai-box { background: linear-gradient(135deg, rgba(31,108,114,0.07), rgba(108,143,132,0.04)); border: 1px solid rgba(31,108,114,0.14); border-radius: 14px; padding: 18px; margin-top: 16px; }
 .ai-tag { display: flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--accent); margin-bottom: 10px; }
-.ai-tag::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); animation: glow 2s ease-in-out infinite; }
+.ai-tag::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); animation: glow 2.5s ease-in-out infinite; }
 .ai-text { font-size: 13px; line-height: 1.75; color: var(--text); }
 .ai-text.pending { color: var(--muted); font-style: italic; }
 .audience-row { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
-.aud-btn { padding: 4px 12px; border-radius: 20px; border: 1px solid var(--border2); background: transparent; color: var(--muted); font-family: var(--mono); font-size: 10px; cursor: pointer; transition: all 0.15s; }
+.aud-btn { padding: 5px 12px; border-radius: 20px; border: 1px solid var(--border); background: rgba(255,255,255,0.9); color: var(--muted); font-family: var(--mono); font-size: 10px; cursor: pointer; transition: all 0.15s; }
 .aud-btn:hover { color: var(--text); }
-.aud-btn.active { background: rgba(108,99,255,0.15); color: var(--accent); border-color: var(--accent); }
+.aud-btn.active { background: rgba(31,108,114,0.1); color: var(--accent); border-color: var(--accent); }
+.aud-btn:disabled { opacity: 0.55; cursor: wait; }
+.audience-status { margin-left: auto; padding: 5px 10px; border-radius: 999px; background: rgba(22,90,97,0.06); color: var(--accent); font-family: var(--mono); font-size: 10px; border: 1px solid rgba(22,90,97,0.1); }
+.audience-status.loading { background: rgba(22,90,97,0.1); }
+.ai-box.loading { border-color: rgba(22,90,97,0.2); box-shadow: inset 0 0 0 1px rgba(22,90,97,0.03); }
+.ai-text.updating { color: var(--muted); }
 .hmap-header { display: flex; gap: 4px; margin-left: 100px; margin-bottom: 4px; }
 .hmap-col-lbl { flex: 1; text-align: center; font-size: 10px; color: var(--muted); font-family: var(--mono); }
 .hmap-row { display: flex; gap: 4px; align-items: center; margin-bottom: 4px; }
 .hmap-lbl { width: 100px; font-size: 11px; color: var(--muted); font-family: var(--mono); flex-shrink: 0; }
-.hmap-cell { flex: 1; height: 34px; border-radius: 5px; display: flex; align-items: center; justify-content: center; font-family: var(--mono); font-size: 11px; font-weight: 600; cursor: default; transition: transform 0.15s, filter 0.15s; }
+.hmap-cell { flex: 1; min-height: 42px; border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-family: var(--mono); font-size: 11px; font-weight: 600; cursor: help; transition: transform 0.15s, filter 0.15s; border: 1px solid transparent; padding: 4px 6px; text-align: center; }
 .hmap-cell:hover { transform: scale(1.06); filter: brightness(1.2); }
+.hmap-cell-main { line-height: 1; }
+.hmap-cell-sub { font-size: 9px; opacity: 0.78; line-height: 1; }
+.hmap-cell.sparse { border-style: dashed; border-color: rgba(182,111,24,0.35); background-image: linear-gradient(135deg, rgba(182,111,24,0.08) 25%, transparent 25%, transparent 50%, rgba(182,111,24,0.08) 50%, rgba(182,111,24,0.08) 75%, transparent 75%, transparent); background-size: 10px 10px; }
+.hmap-cell.null { border-style: dashed; border-color: rgba(71,94,101,0.24); background-image: linear-gradient(135deg, rgba(71,94,101,0.08) 25%, transparent 25%, transparent 50%, rgba(71,94,101,0.08) 50%, rgba(71,94,101,0.08) 75%, transparent 75%, transparent); background-size: 10px 10px; }
+.hmap-cell.active { outline: 2px solid rgba(22,90,97,0.18); }
+.hmap-legend { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+.hmap-legend-item { display: inline-flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 999px; background: rgba(255,255,255,0.78); border: 1px solid var(--border); font-family: var(--mono); font-size: 10px; color: var(--muted); }
+.hmap-legend-chip { width: 18px; height: 18px; border-radius: 6px; border: 1px solid rgba(16,33,38,0.08); background: rgba(19,121,91,0.14); }
+.hmap-legend-chip.sparse { border-style: dashed; border-color: rgba(182,111,24,0.35); background-image: linear-gradient(135deg, rgba(182,111,24,0.1) 25%, transparent 25%, transparent 50%, rgba(182,111,24,0.1) 50%, rgba(182,111,24,0.1) 75%, transparent 75%, transparent); background-size: 10px 10px; }
+.hmap-legend-chip.null { border-style: dashed; border-color: rgba(71,94,101,0.24); background-image: linear-gradient(135deg, rgba(71,94,101,0.1) 25%, transparent 25%, transparent 50%, rgba(71,94,101,0.1) 50%, rgba(71,94,101,0.1) 75%, transparent 75%, transparent); background-size: 10px 10px; }
+.hmap-legend-note { width: 100%; font-size: 11px; color: var(--muted); line-height: 1.7; }
+.detail-backdrop { position: fixed; inset: 0; background: rgba(8,22,27,0.32); backdrop-filter: blur(10px); display: none; align-items: flex-end; justify-content: center; padding: 20px; z-index: 30; }
+.detail-backdrop.open { display: flex; }
+.detail-sheet { width: min(460px, 100%); background: rgba(255,255,255,0.97); border: 1px solid rgba(22,90,97,0.12); border-radius: 24px; box-shadow: 0 24px 50px rgba(15,23,32,0.18); padding: 20px; }
+.detail-close-row { display: flex; justify-content: flex-end; margin-bottom: 6px; }
+.detail-close { border: 1px solid var(--border); background: rgba(255,255,255,0.88); color: var(--muted); border-radius: 999px; padding: 7px 11px; font-family: var(--mono); font-size: 10px; cursor: pointer; }
+.detail-kicker { font-family: var(--mono); font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--accent); margin-bottom: 10px; }
+.detail-title { font-size: 24px; font-weight: 800; letter-spacing: -0.03em; line-height: 1.1; margin-bottom: 12px; color: var(--text); }
+.detail-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-bottom: 14px; }
+.detail-stat { padding: 12px; border-radius: 14px; background: var(--surface2); border: 1px solid rgba(16,33,38,0.08); }
+.detail-stat-label { font-family: var(--mono); font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+.detail-stat-value { font-size: 15px; font-weight: 700; color: var(--text); }
+.detail-body { font-size: 13px; color: var(--muted); line-height: 1.75; }
 .remed-step { display: flex; gap: 16px; padding: 16px 0; border-bottom: 1px solid var(--border); }
 .remed-step:last-child { border-bottom: none; }
-.step-n { width: 30px; height: 30px; border-radius: 7px; background: rgba(108,99,255,0.12); border: 1px solid rgba(108,99,255,0.25); display: flex; align-items: center; justify-content: center; font-family: var(--mono); font-size: 11px; color: var(--accent); flex-shrink: 0; }
+.step-n { width: 30px; height: 30px; border-radius: 7px; background: rgba(31,108,114,0.08); border: 1px solid rgba(31,108,114,0.16); display: flex; align-items: center; justify-content: center; font-family: var(--mono); font-size: 11px; color: var(--accent); flex-shrink: 0; }
 .step-body { flex: 1; }
 .step-title { font-weight: 600; font-size: 13px; margin-bottom: 5px; }
 .step-desc { font-size: 12px; color: var(--muted); line-height: 1.6; }
 .step-impact { display: inline-block; margin-top: 7px; font-family: var(--mono); font-size: 11px; color: var(--accent2); }
 .reg-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
 .reg-pill { padding: 4px 12px; border-radius: 20px; font-size: 10px; font-family: var(--mono); border: 1px solid; }
-.reg-pass { background: rgba(64,217,139,0.07); color: var(--success); border-color: rgba(64,217,139,0.25); }
-.reg-fail { background: rgba(255,77,109,0.07); color: var(--danger); border-color: rgba(255,77,109,0.25); }
-.reg-warn { background: rgba(255,179,71,0.07); color: var(--warn); border-color: rgba(255,179,71,0.25); }
-.upload-hero { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 60vh; gap: 20px; text-align: center; }
-.hero-icon { width: 80px; height: 80px; border-radius: 20px; background: linear-gradient(135deg, rgba(108,99,255,0.15), rgba(0,229,176,0.08)); border: 1px solid rgba(108,99,255,0.2); display: flex; align-items: center; justify-content: center; }
-.hero-title { font-size: 28px; font-weight: 800; background: linear-gradient(135deg, #e2e2f0 0%, #6c63ff 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
-.hero-sub { font-size: 14px; color: var(--muted); max-width: 420px; line-height: 1.6; }
-.hero-upload { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 32px 48px; border-radius: 16px; border: 2px dashed var(--border2); background: var(--surface); cursor: pointer; transition: all 0.2s; margin-top: 8px; }
-.hero-upload:hover { border-color: var(--accent); background: rgba(108,99,255,0.05); }
-.hero-upload-text { font-family: var(--mono); font-size: 12px; color: var(--muted); }
-.spinner { display: inline-block; width: 13px; height: 13px; border: 2px solid rgba(108,99,255,0.3); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; }
-@keyframes spin { to { transform: rotate(360deg); } }
-.report-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 18px; background: var(--surface2); border-radius: 8px; border: 1px solid var(--border); margin-bottom: 16px; font-size: 12px; }
+.reg-pass { background: rgba(19,121,91,0.08); color: var(--success); border-color: rgba(19,121,91,0.2); }
+.reg-fail { background: rgba(180,35,24,0.08); color: var(--danger); border-color: rgba(180,35,24,0.18); }
+.reg-warn { background: rgba(182,111,24,0.08); color: var(--warn); border-color: rgba(182,111,24,0.18); }
+.landing-shell { display: flex; flex-direction: column; gap: 24px; padding: 8px 0 20px; }
+.landing-hero { display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 22px; align-items: stretch; }
+.landing-copy { padding: 38px 38px 34px; position: relative; overflow: hidden; background: linear-gradient(145deg, rgba(255,255,255,0.92), rgba(255,255,255,0.76)); border-radius: 34px; box-shadow: var(--shadow); }
+.landing-copy::before { content: ''; position: absolute; inset: auto -10% -40% auto; width: 260px; height: 260px; background: radial-gradient(circle, rgba(31,108,114,0.12), transparent 70%); pointer-events: none; }
+.landing-eyebrow { font-family: var(--mono); font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--accent); margin-bottom: 14px; }
+.landing-title { font-size: clamp(38px, 5vw, 56px); line-height: 1.02; letter-spacing: -0.05em; max-width: 15ch; margin-bottom: 16px; color: var(--text); }
+.landing-title-line { display: block; }
+.landing-sub { font-size: 14px; line-height: 1.8; color: var(--muted); max-width: 50ch; }
+.landing-quote { margin-top: 20px; padding: 14px 16px; border-left: 3px solid var(--accent); background: rgba(31,108,114,0.06); border-radius: 0 16px 16px 0; color: var(--text); font-size: 13px; line-height: 1.7; }
+.landing-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 24px; }
+.landing-primary, .landing-secondary, .demo-link { border-radius: 999px; font-family: var(--sans); font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.18s; }
+.landing-primary { padding: 12px 20px; border: none; background: var(--accent); color: #fff; box-shadow: 0 16px 32px rgba(31,108,114,0.18); }
+.landing-primary:hover { background: #255f64; transform: translateY(-1px); }
+.landing-secondary { padding: 11px 18px; border: 1px solid var(--border2); background: rgba(255,255,255,0.94); color: var(--accent); }
+.landing-secondary:hover { border-color: var(--accent); }
+.landing-note { font-family: var(--mono); font-size: 10px; color: var(--muted); }
+.landing-proof { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 24px; }
+.proof-chip { padding: 8px 12px; border-radius: 999px; border: 1px solid rgba(31,108,114,0.12); background: rgba(31,108,114,0.04); color: var(--text); font-family: var(--mono); font-size: 11px; }
+.landing-card { padding: 8px 0 0 8px; display: flex; flex-direction: column; gap: 16px; }
+.landing-card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.landing-card-title { font-size: 18px; font-weight: 700; letter-spacing: -0.02em; }
+.landing-card-kicker { font-family: var(--mono); font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); }
+.workflow-list { display: flex; flex-direction: column; gap: 12px; padding: 24px; border-left: 1px solid rgba(22,90,97,0.12); }
+.workflow-step { display: flex; gap: 12px; align-items: flex-start; padding: 0 0 12px; border-bottom: 1px solid rgba(16,33,38,0.08); }
+.workflow-step:last-child { border-bottom: none; padding-bottom: 0; }
+.workflow-step-n { width: 30px; height: 30px; border-radius: 10px; display: flex; align-items: center; justify-content: center; background: rgba(31,108,114,0.08); color: var(--accent); font-family: var(--mono); font-size: 11px; flex-shrink: 0; }
+.workflow-step strong { display: block; font-size: 13px; margin-bottom: 3px; }
+.workflow-step span { display: block; font-size: 12px; line-height: 1.55; color: var(--muted); }
+.story-card { margin-top: 2px; padding: 20px 24px 0 24px; border-top: 1px solid rgba(22,90,97,0.12); }
+.story-title { font-family: var(--mono); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); margin-bottom: 10px; }
+.story-copy { font-size: 13px; color: var(--text); line-height: 1.75; max-width: 42ch; }
+.story-copy strong { color: var(--accent); }
+.landing-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; align-items: stretch; }
+.landing-panel { padding: 18px 18px 20px; background: rgba(255,255,255,0.62); border-top: 2px solid rgba(22,90,97,0.18); border-radius: 18px; }
+.landing-panel-title { font-size: 17px; font-weight: 700; margin-bottom: 10px; letter-spacing: -0.02em; }
+.landing-panel-copy { font-size: 14px; color: var(--muted); line-height: 1.82; max-width: 44ch; }
+.mini-stat { margin-top: 16px; padding-top: 14px; border-top: 1px solid rgba(16,33,38,0.08); font-family: var(--mono); font-size: 11px; color: var(--muted); }
+.mini-stat strong { color: var(--text); font-size: 18px; display: block; margin-bottom: 6px; font-family: var(--sans); }
+.demo-link-row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+.demo-link { padding: 10px 14px; border: 1px solid var(--border); background: rgba(255,255,255,0.92); color: var(--text); }
+.demo-link:hover { border-color: var(--accent); color: var(--accent); }
+.landing-panel-wide { grid-column: auto; }
+.recent-shell { padding: 2px 0 0; }
+.recent-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
+.recent-title { font-size: 22px; font-weight: 800; letter-spacing: -0.03em; color: var(--text); }
+.recent-copy { font-size: 13px; color: var(--muted); max-width: 56ch; line-height: 1.75; }
+.recent-actions { display: flex; align-items: center; gap: 10px; }
+.recent-clear { border: 1px solid var(--border); background: rgba(255,255,255,0.88); color: var(--muted); border-radius: 999px; padding: 9px 13px; font-family: var(--mono); font-size: 10px; cursor: pointer; }
+.recent-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.recent-card { background: rgba(255,255,255,0.86); border: 1px solid var(--border); border-radius: 18px; padding: 18px; box-shadow: var(--shadow-soft); display: flex; flex-direction: column; gap: 10px; }
+.recent-meta { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.recent-badge { padding: 4px 8px; border-radius: 999px; background: rgba(22,90,97,0.08); color: var(--accent); font-family: var(--mono); font-size: 9px; text-transform: uppercase; letter-spacing: 0.08em; }
+.recent-time { font-family: var(--mono); font-size: 10px; color: var(--muted); }
+.recent-name { font-size: 16px; font-weight: 700; letter-spacing: -0.02em; color: var(--text); }
+.recent-detail { font-size: 12px; color: var(--muted); line-height: 1.7; }
+.recent-stats { display: flex; gap: 12px; flex-wrap: wrap; font-family: var(--mono); font-size: 10px; color: var(--muted); }
+.recent-open { margin-top: auto; border: none; background: var(--accent); color: #fff; border-radius: 999px; padding: 10px 14px; font-family: var(--sans); font-size: 12px; font-weight: 700; cursor: pointer; align-self: flex-start; }
+.recent-empty { border: 1px dashed rgba(22,90,97,0.18); border-radius: 18px; padding: 20px; background: rgba(255,255,255,0.7); font-size: 13px; color: var(--muted); line-height: 1.8; }
+.report-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 18px; background: var(--surface2); border-radius: 12px; border: 1px solid var(--border); margin-bottom: 16px; font-size: 12px; }
 .report-meta-k { color: var(--muted); font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; }
+#heatmapWrap { overflow-x: auto; padding-bottom: 4px; }
 
 /* ── WHAT-IF STYLES ── */
 .wi-feature-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 20px; }
-.wi-check { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface2); cursor: pointer; transition: all 0.15s; user-select: none; }
+.wi-check { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface2); cursor: pointer; transition: all 0.15s; user-select: none; }
 .wi-check:hover { border-color: var(--border2); background: var(--surface3); }
-.wi-check.selected { border-color: var(--accent); background: rgba(108,99,255,0.1); }
+.wi-check.selected { border-color: var(--accent); background: rgba(31,108,114,0.08); }
 .wi-check input { display: none; }
 .wi-check-box { width: 14px; height: 14px; border-radius: 4px; border: 1px solid var(--border2); background: transparent; flex-shrink: 0; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
 .wi-check.selected .wi-check-box { background: var(--accent); border-color: var(--accent); }
@@ -168,7 +308,7 @@ body::before { content: ''; position: fixed; inset: 0; background-image: linear-
 .wi-check-label { font-family: var(--mono); font-size: 11px; color: var(--muted); }
 .wi-check.selected .wi-check-label { color: var(--text); }
 .wi-delta-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 20px; }
-.wi-delta-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; text-align: center; }
+.wi-delta-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 16px; text-align: center; box-shadow: var(--shadow); }
 .wi-delta-metric { font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-bottom: 10px; }
 .wi-delta-row { display: flex; align-items: center; justify-content: center; gap: 10px; }
 .wi-delta-before { font-family: var(--mono); font-size: 16px; color: var(--muted); }
@@ -180,9 +320,68 @@ body::before { content: ''; position: fixed; inset: 0; background-image: linear-
 .wi-delta-change { font-family: var(--mono); font-size: 11px; margin-top: 6px; }
 .wi-delta-change.better { color: var(--success); }
 .wi-delta-change.worse  { color: var(--danger); }
-.wi-empty { text-align: center; padding: 48px 32px; color: var(--muted); font-family: var(--mono); font-size: 12px; line-height: 2; border: 1px dashed var(--border); border-radius: 10px; }
+.wi-empty { text-align: center; padding: 48px 32px; color: var(--muted); font-family: var(--mono); font-size: 12px; line-height: 2; border: 1px dashed var(--border2); border-radius: 14px; background: rgba(255,255,255,0.76); }
+.wi-selected-list { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+.wi-chip { display: inline-flex; align-items: center; padding: 7px 10px; border-radius: 999px; background: rgba(22,90,97,0.07); border: 1px solid rgba(22,90,97,0.14); color: var(--accent); font-family: var(--mono); font-size: 10px; }
+.wi-chip.empty { background: rgba(255,255,255,0.74); border-style: dashed; color: var(--muted); }
+.report-handoff { margin-top: 18px; padding: 18px; border-radius: 16px; background: linear-gradient(135deg, rgba(22,90,97,0.07), rgba(255,255,255,0.8)); border: 1px solid rgba(22,90,97,0.12); }
+.report-handoff-title { font-size: 16px; font-weight: 700; color: var(--text); margin-bottom: 6px; }
+.report-handoff-copy { font-size: 13px; color: var(--muted); line-height: 1.75; }
 
-@media (max-width: 900px) { .app { grid-template-columns: 1fr; } .sidebar { display: none; } .two-col, .score-grid, .wi-delta-grid, .wi-feature-grid { grid-template-columns: 1fr; } }
+@media (max-width: 1100px) {
+  .landing-hero, .landing-grid, .recent-grid { grid-template-columns: 1fr; }
+  .upload-bar { grid-template-columns: 1fr; }
+  .skeleton-score-grid, .skeleton-two-col { grid-template-columns: 1fr; }
+}
+@media (max-width: 900px) {
+  .app { grid-template-columns: 1fr; }
+  .sidebar { display: none; }
+  .mobile-nav { display: flex; }
+  .two-col, .score-grid, .wi-delta-grid, .wi-feature-grid { grid-template-columns: 1fr; }
+  .topbar, .upload-bar, .content { padding-left: 20px; padding-right: 20px; }
+  .mobile-nav { padding-left: 20px; padding-right: 20px; }
+  .landing-copy { border-radius: 26px; }
+  .landing-title { max-width: none; }
+  .setup-grid { grid-template-columns: 1fr; }
+  .setup-card-head { align-items: flex-start; flex-direction: column; }
+  .setup-title { max-width: none; }
+  .setup-helper { margin-left: 0; }
+  .overview-lead { flex-direction: column; }
+  .overview-meta { justify-content: flex-start; min-width: 0; }
+  .panel { padding: 18px; }
+  .panel-hd { flex-wrap: wrap; }
+  .chart-wrap { height: 180px; }
+  .hmap-header, .hmap-row { min-width: 540px; }
+  .hmap-cell:hover { transform: none; }
+  .detail-grid { grid-template-columns: 1fr; }
+  .recent-head { flex-direction: column; align-items: flex-start; }
+}
+@media (max-width: 640px) {
+  .topbar { flex-direction: column; align-items: flex-start; gap: 12px; }
+  .breadcrumb { font-size: 11px; }
+  .domain-pills, .landing-actions, .landing-proof, .demo-link-row { width: 100%; }
+  .domain-pills { overflow-x: auto; padding-bottom: 2px; }
+  .pill-btn { flex: 1 0 auto; }
+  .landing-copy { padding: 26px 22px; }
+  .landing-card { padding-left: 0; }
+  .workflow-list { padding: 20px; }
+  .setup-card { padding: 18px; border-radius: 18px; }
+  .setup-title { font-size: 24px; }
+  .landing-title-line { display: inline; }
+  .landing-title-line + .landing-title-line::before { content: ' '; }
+  .landing-primary, .landing-secondary, .demo-link { width: 100%; justify-content: center; text-align: center; }
+  .setup-actions { flex-direction: column; align-items: stretch; }
+  .export-btn { margin-left: 0; width: 100%; }
+  .report-meta { grid-template-columns: 1fr; }
+  .audience-row { flex-wrap: wrap; }
+  .audience-status { margin-left: 0; }
+  .overview-title { font-size: 23px; }
+  .chart-wrap { height: 160px; }
+  .hmap-header, .hmap-row { min-width: 500px; }
+  .panel-hd { font-size: 10px; }
+  .detail-sheet { border-radius: 20px; padding: 18px; }
+  .detail-title { font-size: 21px; }
+}
 </style>
 </head>
 <body>
@@ -193,103 +392,286 @@ body::before { content: ''; position: fixed; inset: 0; background-image: linear-
     <div class="logo-tag">Bias Detection Engine</div>
   </div>
   <div class="nav-section-label">Analysis</div>
-  <div class="nav-item active" onclick="nav('overview', this)">
+  <div class="nav-item active" data-page="overview" onclick="nav('overview', this)">
     <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>
     Overview <div class="pulse"></div>
   </div>
-  <div class="nav-item" onclick="nav('metrics', this)">
+  <div class="nav-item" data-page="metrics" onclick="nav('metrics', this)">
     <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="1,13 5,7 8,10 12,3 15,6"/></svg>
-    Fairness metrics
+    Fairness checks
   </div>
-  <div class="nav-item" onclick="nav('shap', this)">
+  <div class="nav-item" data-page="shap" onclick="nav('shap', this)">
     <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="5"/><line x1="8" y1="1" x2="8" y2="15"/><line x1="1" y1="8" x2="15" y2="8"/></svg>
-    Explainability
+    Bias drivers
   </div>
-  <div class="nav-item" onclick="nav('intersect', this)">
+  <div class="nav-item" data-page="intersect" onclick="nav('intersect', this)">
     <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6" cy="7" r="4"/><circle cx="10" cy="7" r="4"/></svg>
     Intersectionality
   </div>
   <div class="nav-section-label">Actions</div>
-  <div class="nav-item" onclick="nav('whatif', this)">
+  <div class="nav-item" data-page="whatif" onclick="nav('whatif', this)">
     <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 8h3l2-5 3 10 2-5h2"/></svg>
     What-if simulator
   </div>
-  <div class="nav-item" onclick="nav('remediation', this)">
+  <div class="nav-item" data-page="remediation" onclick="nav('remediation', this)">
     <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M13 2L8 7M3 9l-1 4 4-1M5 11l6-6"/></svg>
     Remediation
   </div>
-  <div class="nav-item" onclick="nav('report', this)">
+  <div class="nav-item" data-page="report" onclick="nav('report', this)">
     <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 2h7l3 3v9H3z"/><line x1="6" y1="7" x2="10" y2="7"/><line x1="6" y1="10" x2="10" y2="10"/></svg>
-    Audit report
+    Final report
   </div>
-  <div class="sidebar-bottom">v1.0.0 · SDG 10 · GDG Solution Challenge 2026</div>
+  <div class="sidebar-bottom">v1.0.0 · SDG 10 · Reduced Inequalities</div>
 </aside>
 
 <main class="main">
   <div class="topbar">
     <div class="breadcrumb">equilens / <span id="domainSlug">upload-dataset</span></div>
     <div class="domain-pills">
-      <button class="pill-btn active" onclick="switchDomain('hiring', this)">Hiring</button>
-      <button class="pill-btn" onclick="switchDomain('credit', this)">Credit</button>
-      <button class="pill-btn" onclick="switchDomain('healthcare', this)">Healthcare</button>
+      <button class="pill-btn active" id="pillHiring" onclick="switchDomain('hiring', this)">Hiring</button>
+      <button class="pill-btn" id="pillCredit" onclick="switchDomain('credit', this)">Credit</button>
+      <button class="pill-btn" id="pillHealthcare" onclick="switchDomain('healthcare', this)">Healthcare</button>
     </div>
+  </div>
+  <div class="mobile-nav">
+    <button class="mobile-nav-btn active" data-page="overview" onclick="nav('overview', this)">Overview</button>
+    <button class="mobile-nav-btn" data-page="metrics" onclick="nav('metrics', this)">Fairness</button>
+    <button class="mobile-nav-btn" data-page="shap" onclick="nav('shap', this)">Drivers</button>
+    <button class="mobile-nav-btn" data-page="intersect" onclick="nav('intersect', this)">Intersection</button>
+    <button class="mobile-nav-btn" data-page="whatif" onclick="nav('whatif', this)">What-If</button>
+    <button class="mobile-nav-btn" data-page="remediation" onclick="nav('remediation', this)">Fixes</button>
+    <button class="mobile-nav-btn" data-page="report" onclick="nav('report', this)">Report</button>
   </div>
 
   <div class="upload-bar">
-    <span class="upload-label">Dataset:</span>
-    <button class="upload-btn" id="uploadBtn" onclick="document.getElementById('fileInput').click()">
-      <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 1v10M4 5l4-4 4 4"/><path d="M1 12v2h14v-2"/></svg>
-      <span id="uploadLabel">Choose CSV file</span>
-    </button>
-    <input type="file" id="fileInput" accept=".csv" onchange="onFileSelected(this)">
-    <span class="upload-label">Target:</span>
-    <select class="sel" id="targetSel"><option value="">Select column</option></select>
-    <span class="upload-label">Sensitive:</span>
-    <select class="sel" id="sensitiveSel"><option value="">Select column</option></select>
-    <span class="upload-label">Intersect with:</span>
-    <select class="sel" id="sensitiveSel2"><option value="">(optional)</option></select>
-    <button class="run-btn" id="runBtn" onclick="runAnalysis()">
-      <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><polygon points="4,2 14,8 4,14"/></svg>
-      Analyze
-    </button>
-    <button class="export-btn" onclick="nav('report', null)">Export report</button>
+    <div class="setup-intro">
+      <div class="setup-kicker">Audit Setup</div>
+      <div class="setup-title">Upload a CSV. Get a clear fairness audit.</div>
+      <div class="setup-copy">Choose the decision outcome, select the protected attribute you want to test, and let EquiLens turn fairness checks into clear language your audience can act on.</div>
+      <div class="setup-badges">
+        <span class="setup-badge">Guided CSV upload</span>
+        <span class="setup-badge">Intersection-ready</span>
+        <span class="setup-badge">Plain-language output</span>
+      </div>
+    </div>
+
+    <div class="setup-card">
+      <div class="setup-card-head">
+        <div>
+          <div class="setup-card-note">Step 1</div>
+          <div class="setup-card-title">Configure your audit</div>
+        </div>
+        <span class="badge badge-purple">Guided workflow</span>
+      </div>
+
+      <div class="setup-grid">
+        <div class="setup-field setup-field-wide">
+          <span class="upload-label">Dataset</span>
+          <button class="upload-btn" id="uploadBtn" onclick="document.getElementById('fileInput').click()">
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 1v10M4 5l4-4 4 4"/><path d="M1 12v2h14v-2"/></svg>
+            <span id="uploadLabel">Choose CSV file</span>
+          </button>
+          <input type="file" id="fileInput" accept=".csv" onchange="onFileSelected(this)">
+        </div>
+
+        <div class="setup-field">
+          <span class="upload-label">Target Column</span>
+          <select class="sel" id="targetSel"><option value="">Select column</option></select>
+        </div>
+
+        <div class="setup-field">
+          <span class="upload-label">Sensitive Attribute</span>
+          <select class="sel" id="sensitiveSel"><option value="">Select column</option></select>
+        </div>
+
+        <div class="setup-field setup-field-wide">
+          <span class="upload-label">Intersection Attribute</span>
+          <select class="sel" id="sensitiveSel2"><option value="">(optional)</option></select>
+        </div>
+      </div>
+
+      <div class="setup-actions">
+        <button class="run-btn" id="runBtn" onclick="runAnalysis()">
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><polygon points="4,2 14,8 4,14"/></svg>
+          Run Audit
+        </button>
+        <button class="export-btn" onclick="nav('report', null)">Export report</button>
+        <span class="setup-helper">Best results: upload a decision dataset with at least one sensitive attribute like gender, caste, race, or age.</span>
+      </div>
+      <div id="setupError" class="inline-error"></div>
+      <div id="setupNote" class="inline-note"></div>
+    </div>
   </div>
 
   <!-- OVERVIEW -->
   <div class="page active" id="page-overview">
     <div class="content">
-      <div id="emptyState" class="upload-hero">
-        <div class="hero-icon">
-          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#6c63ff" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+      <div id="emptyState" class="landing-shell">
+        <section class="landing-hero">
+          <div class="landing-copy">
+            <div class="landing-eyebrow">AI-Powered Bias Detection For Non-Technical Users</div>
+            <h1 class="landing-title"><span class="landing-title-line">Catch unfair patterns</span><span class="landing-title-line">before they reach real people.</span></h1>
+            <div class="landing-sub">
+              EquiLens helps NGOs, schools, and small businesses check whether hiring, lending, and healthcare datasets treat people fairly. Upload a CSV, choose the right columns, and get a plain-language audit.
+            </div>
+            <div class="landing-quote">
+              Amazon's hiring AI and COMPAS showed what happens when biased systems go unchecked. EquiLens helps teams catch that risk earlier.
+            </div>
+            <div class="landing-actions">
+              <button class="landing-primary" onclick="document.getElementById('fileInput').click()">Start An Audit</button>
+              <button class="landing-secondary" onclick="switchDomain('hiring', document.getElementById('pillHiring'))">Preview A Demo Audit</button>
+              <span class="landing-note">Single-page workflow with plain-language findings</span>
+            </div>
+            <div class="landing-proof">
+              <span class="proof-chip">SPD</span>
+              <span class="proof-chip">Disparate Impact</span>
+              <span class="proof-chip">Equalized Odds</span>
+              <span class="proof-chip">SHAP + Gemini</span>
+            </div>
+          </div>
+
+          <div class="landing-card">
+            <div class="landing-card-head">
+              <div>
+                <div class="landing-card-kicker">How It Works</div>
+                <div class="landing-card-title">A five-minute fairness audit</div>
+              </div>
+              <span class="badge badge-purple">EquiLens Flow</span>
+            </div>
+
+            <div class="workflow-list">
+              <div class="workflow-step">
+                <div class="workflow-step-n">01</div>
+                <div><strong>Upload a CSV</strong><span>Start with hiring, credit, scholarship, admissions, or healthcare decisions.</span></div>
+              </div>
+              <div class="workflow-step">
+                <div class="workflow-step-n">02</div>
+                <div><strong>Choose the right columns</strong><span>Select the outcome, the protected attribute, and an optional intersection field.</span></div>
+              </div>
+              <div class="workflow-step">
+                <div class="workflow-step-n">03</div>
+                <div><strong>Review risk and drivers</strong><span>See fairness metrics, subgroup gaps, and which features are linked to the disparity.</span></div>
+              </div>
+              <div class="workflow-step">
+                <div class="workflow-step-n">04</div>
+                <div><strong>Share the audit</strong><span>Translate the findings for the right audience and export a report.</span></div>
+              </div>
+            </div>
+
+            <div class="story-card">
+              <div class="story-title">Real User Story</div>
+              <div class="story-copy">
+                Priya runs an NGO in Pune. She audits scholarship approvals by <strong>gender</strong> and <strong>caste</strong>, finds lower-caste girls at <strong>8%</strong> approval versus <strong>34%</strong> for upper-caste boys, and leaves with a board-ready fairness report.
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="landing-grid">
+          <article class="landing-panel">
+            <div class="landing-panel-title">Why EquiLens matters</div>
+            <div class="landing-panel-copy">
+              AI systems increasingly shape jobs, loans, scholarships, and healthcare access. If they learn from biased history, they can scale harm quietly.
+            </div>
+            <div class="mini-stat">
+              <strong>Before deployment, not after harm</strong>
+              EquiLens is built to surface risk early enough to act.
+            </div>
+          </article>
+
+          <article class="landing-panel">
+            <div class="landing-panel-title">Why teams choose EquiLens</div>
+            <div class="landing-panel-copy">
+              Many fairness tools assume the reader can interpret technical outputs. EquiLens keeps the evidence but explains it in language the audience can actually use.
+            </div>
+            <div class="mini-stat">
+              <strong>Student, NGO worker, policy maker</strong>
+              The explanation changes tone without changing the evidence.
+            </div>
+          </article>
+
+          <article class="landing-panel landing-panel-wide">
+            <div class="landing-panel-title">Try a sample audit</div>
+            <div class="landing-panel-copy">
+              Open a realistic scenario to see how EquiLens presents a detected fairness risk.
+            </div>
+            <div class="demo-link-row">
+              <button class="demo-link" onclick="switchDomain('hiring', document.getElementById('pillHiring'))">Hiring Demo</button>
+              <button class="demo-link" onclick="switchDomain('credit', document.getElementById('pillCredit'))">Credit Demo</button>
+              <button class="demo-link" onclick="switchDomain('healthcare', document.getElementById('pillHealthcare'))">Healthcare Demo</button>
+            </div>
+            <div class="mini-stat">
+              <strong>Aligned with SDG 10</strong>
+              Reduced Inequalities through accessible AI fairness auditing.
+            </div>
+          </article>
+        </section>
+
+        <section class="recent-shell">
+          <div class="recent-head">
+            <div>
+              <div class="landing-card-kicker">Recent Activity</div>
+              <div class="recent-title">Recent audits and uploaded datasets</div>
+              <div class="recent-copy">EquiLens keeps a lightweight local history in this browser so you can reopen recent audit snapshots without uploading the same file again.</div>
+            </div>
+            <div class="recent-actions">
+              <button class="recent-clear" id="clearHistoryBtn" onclick="clearAuditHistory()">Clear history</button>
+            </div>
+          </div>
+          <div class="recent-grid" id="recentAudits"></div>
+        </section>
+      </div>
+      <div id="analysisSkeleton" class="skeleton-screen">
+        <div class="skeleton-overview">
+          <div class="skeleton-panel skeleton-hero"></div>
+          <div class="skeleton-score-grid">
+            <div class="skeleton-card"></div>
+            <div class="skeleton-card"></div>
+            <div class="skeleton-card"></div>
+            <div class="skeleton-card"></div>
+          </div>
+          <div class="skeleton-two-col">
+            <div class="skeleton-panel"></div>
+            <div class="skeleton-panel"></div>
+          </div>
+          <div class="skeleton-overview">
+            <div class="skeleton-pills">
+              <div class="skeleton-pill"></div>
+              <div class="skeleton-pill"></div>
+              <div class="skeleton-pill"></div>
+            </div>
+            <div class="skeleton-panel tall"></div>
+          </div>
         </div>
-        <div class="hero-title">Detect hidden bias</div>
-        <div class="hero-sub">Upload a CSV dataset, select your target and sensitive columns, and EquiLens will audit it for discrimination in seconds.</div>
-        <div class="hero-upload" onclick="document.getElementById('fileInput').click()">
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-          <div class="hero-upload-text">Click to upload CSV — or drag and drop</div>
-          <div style="font-size:11px;color:var(--muted);font-family:var(--mono);">hiring_sample.csv, loan_data.csv, admissions.csv...</div>
-        </div>
-        <div style="font-family:var(--mono);font-size:11px;color:var(--muted);opacity:0.6;margin-top:8px;">Real bias found: Amazon hiring AI, COMPAS recidivism, Healthcare cost algorithm</div>
       </div>
       <div id="resultsState" style="display:none;">
+        <div class="overview-lead">
+          <div class="overview-copy">
+            <div class="overview-kicker">Audit Summary</div>
+            <div class="overview-title" id="overviewTitle">Audit complete</div>
+            <div class="overview-desc" id="overviewDesc">EquiLens has analyzed the uploaded dataset and prepared a fairness summary.</div>
+          </div>
+          <div class="overview-meta" id="overviewMeta"></div>
+        </div>
         <div class="score-grid" id="scoreGrid"></div>
         <div class="two-col">
           <div class="panel">
-            <div class="panel-hd">Approval rate by group <span class="badge badge-red" id="diTag"></span></div>
+            <div class="panel-hd">Decision rate by group <span class="badge badge-red" id="diTag"></span></div>
             <div class="chart-wrap"><canvas id="approvalChart"></canvas></div>
           </div>
           <div class="panel">
-            <div class="panel-hd">Group comparison</div>
-            <table class="gtable" id="groupTable"></table>
+          <div class="panel-hd">Group comparison</div>
+            <div class="table-scroll"><table class="gtable" id="groupTable"></table></div>
           </div>
         </div>
         <div class="panel full">
-          <div class="panel-hd">AI explanation <span class="badge badge-purple">Gemini</span></div>
+          <div class="panel-hd">What this audit means <span class="badge badge-purple">Gemini</span></div>
           <div class="audience-row">
             <span style="font-family:var(--mono);font-size:10px;color:var(--muted);">Audience:</span>
             <button class="aud-btn active" onclick="setAudience('ngo', this)">NGO worker</button>
             <button class="aud-btn" onclick="setAudience('student', this)">Student</button>
             <button class="aud-btn" onclick="setAudience('policy', this)">Policy maker</button>
+            <span class="audience-status" id="audienceStatus">Ready</span>
           </div>
           <div class="ai-box">
             <div class="ai-tag">Gemini analysis</div>
@@ -305,7 +687,7 @@ body::before { content: ''; position: fixed; inset: 0; background-image: linear-
   <div class="page" id="page-metrics">
     <div class="content">
       <div class="panel full">
-        <div class="panel-hd">Fairness metric scores <span class="badge badge-red" id="metricsBadge"></span></div>
+        <div class="panel-hd">Core fairness checks <span class="badge badge-red" id="metricsBadge"></span></div>
         <div id="metricRows"></div>
         <div class="ai-box">
           <div class="ai-tag">Metric interpretation</div>
@@ -329,14 +711,14 @@ body::before { content: ''; position: fixed; inset: 0; background-image: linear-
   <div class="page" id="page-shap">
     <div class="content">
       <div class="panel full">
-        <div class="panel-hd">SHAP feature importance <span style="color:var(--muted);font-size:10px;text-transform:none;letter-spacing:0;font-family:var(--sans);">impact on positive decision probability</span></div>
+        <div class="panel-hd">What drives the outcome <span style="color:var(--muted);font-size:10px;text-transform:none;letter-spacing:0;font-family:var(--sans);">impact on positive decision probability</span></div>
         <div style="display:flex;gap:16px;font-size:11px;color:var(--muted);margin-bottom:16px;font-family:var(--mono);">
           <span style="display:flex;align-items:center;gap:6px;"><span style="width:10px;height:10px;background:var(--danger);border-radius:2px;display:inline-block;"></span>Increases bias</span>
           <span style="display:flex;align-items:center;gap:6px;"><span style="width:10px;height:10px;background:var(--accent2);border-radius:2px;display:inline-block;"></span>Decreases bias</span>
         </div>
         <div id="shapRows"></div>
         <div class="ai-box">
-          <div class="ai-tag">Explainability insight</div>
+          <div class="ai-tag">Bias driver insight</div>
           <div class="ai-text pending" id="shapAI">Run analysis to see feature impact analysis.</div>
         </div>
       </div>
@@ -347,8 +729,9 @@ body::before { content: ''; position: fixed; inset: 0; background-image: linear-
   <div class="page" id="page-intersect">
     <div class="content">
       <div class="panel full">
-        <div class="panel-hd">Intersectional approval rates <span class="badge badge-teal" id="intersectBadge">Gender × Race</span></div>
+        <div class="panel-hd">Where disadvantage compounds <span class="badge badge-teal" id="intersectBadge">Gender × Race</span></div>
         <div id="heatmapWrap"></div>
+        <div id="intersectLegend" class="hmap-legend"></div>
         <div class="ai-box" style="margin-top:16px;">
           <div class="ai-tag">Intersectional insight</div>
           <div class="ai-text pending" id="intersectAI">Run analysis to identify compounded discrimination patterns.</div>
@@ -356,7 +739,7 @@ body::before { content: ''; position: fixed; inset: 0; background-image: linear-
       </div>
       <div class="panel full" style="margin-top:18px;">
         <div class="panel-hd">Most disadvantaged subgroups</div>
-        <table class="gtable" id="subgroupTable"></table>
+        <div class="table-scroll"><table class="gtable" id="subgroupTable"></table></div>
       </div>
     </div>
   </div>
@@ -372,11 +755,13 @@ body::before { content: ''; position: fixed; inset: 0; background-image: linear-
         </div>
         <div id="wiNoDataMsg" class="wi-empty">
           Run an analysis first to load features from your dataset.<br>
-          <span style="opacity:0.5;">Upload a CSV → Analyze → then return here to simulate.</span>
+          <span style="opacity:0.5;">Upload a CSV → Run audit → then return here to simulate.</span>
         </div>
+        <div id="wiNotice" class="section-notice"></div>
         <div id="wiFeatureSection" style="display:none;">
           <div style="font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:10px;">Available features — check to simulate dropping them</div>
           <div class="wi-feature-grid" id="wiFeatureGrid"></div>
+          <div class="wi-selected-list" id="wiSelectedList"></div>
           <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
             <button class="run-btn" id="wiRunBtn" onclick="runWhatif()">
               <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 4h14M1 8h10M1 12h6"/></svg>
@@ -432,7 +817,7 @@ body::before { content: ''; position: fixed; inset: 0; background-image: linear-
         </div>
       </div>
       <div class="panel full">
-        <div class="panel-hd">Recommended steps <span class="badge badge-purple" id="remedBadge"></span></div>
+        <div class="panel-hd">How to reduce the risk <span class="badge badge-purple" id="remedBadge"></span></div>
         <div id="remedSteps"></div>
         <div class="ai-box">
           <div class="ai-tag">Remediation strategy</div>
@@ -446,9 +831,11 @@ body::before { content: ''; position: fixed; inset: 0; background-image: linear-
   <div class="page" id="page-report">
     <div class="content">
       <div class="panel full">
-        <div class="panel-hd">Audit certificate <span class="badge badge-purple">EquiLens v1.0</span></div>
+        <div class="panel-hd">Audit report <span class="badge badge-purple">EquiLens v1.0</span></div>
         <div class="report-meta" id="reportMeta"></div>
         <div id="reportBody" style="font-size:13px;line-height:1.8;"></div>
+        <div id="reportHandoff" class="report-handoff"></div>
+        <div id="reportNotice" class="section-notice"></div>
         <div style="display:flex;gap:10px;margin-top:20px;">
           <button class="run-btn" id="pdfBtn" onclick="exportPDF()">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
@@ -462,13 +849,44 @@ body::before { content: ''; position: fixed; inset: 0; background-image: linear-
 </main>
 </div>
 
+<div class="detail-backdrop" id="detailBackdrop" onclick="closeHeatmapDetail(event)">
+  <div class="detail-sheet" onclick="event.stopPropagation()">
+    <div class="detail-close-row">
+      <button class="detail-close" onclick="closeHeatmapDetail()">Close</button>
+    </div>
+    <div class="detail-kicker">Cell details</div>
+    <div class="detail-title" id="detailTitle">Subgroup</div>
+    <div class="detail-grid">
+      <div class="detail-stat">
+        <div class="detail-stat-label">Approval rate</div>
+        <div class="detail-stat-value" id="detailRate">—</div>
+      </div>
+      <div class="detail-stat">
+        <div class="detail-stat-label">Sample size</div>
+        <div class="detail-stat-value" id="detailSample">—</div>
+      </div>
+      <div class="detail-stat">
+        <div class="detail-stat-label">Signal</div>
+        <div class="detail-stat-value" id="detailSignal">—</div>
+      </div>
+    </div>
+    <div class="detail-body" id="detailBody">Tap a subgroup cell to inspect its reliability and approval rate.</div>
+  </div>
+</div>
+
 <script>
 const API_BASE = '';
 
 let state = {
   file: null, targetCol: '', sensitiveCol: '',
   audience: 'ngo', domain: 'hiring',
-  analysisResult: null, charts: {}
+  analysisResult: null, charts: {},
+  explanationLoading: false,
+  explanationRequestId: 0,
+  analysisSource: 'demo',
+  datasetLabel: '',
+  history: [],
+  activeHeatmapCell: null
 };
 
 // ── DEMO DATA ──
@@ -520,22 +938,168 @@ const DEMO = {
   }
 };
 
+const HISTORY_KEY = 'equilensAuditHistoryV1';
+
+function formatAuditTime(isoString) {
+  try {
+    return new Date(isoString).toLocaleString('en-IN', {
+      day: '2-digit',
+      month: 'short',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  } catch (_) {
+    return 'Recent';
+  }
+}
+
+function loadAuditHistory() {
+  try {
+    state.history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+  } catch (_) {
+    state.history = [];
+  }
+  renderRecentAudits();
+}
+
+function persistAuditHistory() {
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(state.history));
+}
+
+function renderRecentAudits() {
+  const wrap = document.getElementById('recentAudits');
+  const clearBtn = document.getElementById('clearHistoryBtn');
+  if (!wrap) return;
+  if (!state.history.length) {
+    wrap.innerHTML = '<div class="recent-empty">Recent audits will appear here after you run an analysis. This stays local to this browser and helps you reopen recent fairness snapshots quickly.</div>';
+    if (clearBtn) clearBtn.style.display = 'none';
+    return;
+  }
+  if (clearBtn) clearBtn.style.display = 'inline-flex';
+  wrap.innerHTML = state.history.map(item => `
+    <article class="recent-card">
+      <div class="recent-meta">
+        <span class="recent-badge">${item.analysisSource === 'live' ? 'Uploaded CSV' : 'Saved audit'}</span>
+        <span class="recent-time">${formatAuditTime(item.createdAt)}</span>
+      </div>
+      <div class="recent-name">${item.datasetLabel}</div>
+      <div class="recent-detail">Target: ${item.targetCol || 'Outcome'} · Sensitive: ${item.sensitiveCol || 'Group'}${item.sensitiveCol2 ? ` · Intersection: ${item.sensitiveCol2}` : ''}</div>
+      <div class="recent-stats">
+        <span>DI ${item.analysisResult?.stats?.di?.toFixed ? item.analysisResult.stats.di.toFixed(3) : '—'}</span>
+        <span>SPD ${item.analysisResult?.stats?.spd !== undefined ? (item.analysisResult.stats.spd * 100).toFixed(1) + '%' : '—'}</span>
+        <span>${(item.analysisResult?.stats?.severity || 'unknown').toUpperCase()}</span>
+      </div>
+      <button class="recent-open" onclick="restoreAudit('${item.id}')">Open audit</button>
+    </article>
+  `).join('');
+}
+
+function recordAuditHistory() {
+  if (!state.analysisResult || state.analysisSource !== 'live') return;
+  const snapshot = {
+    id: `${Date.now()}`,
+    createdAt: new Date().toISOString(),
+    datasetLabel: state.datasetLabel || (state.file ? state.file.name : 'Uploaded dataset'),
+    targetCol: state.targetCol,
+    sensitiveCol: state.sensitiveCol,
+    sensitiveCol2: state.sensitiveCol2 || '',
+    audience: state.audience,
+    domain: state.domain,
+    analysisSource: state.analysisSource,
+    analysisResult: state.analysisResult,
+  };
+  state.history = [snapshot, ...state.history].slice(0, 6);
+  persistAuditHistory();
+  renderRecentAudits();
+}
+
+function clearAuditHistory() {
+  state.history = [];
+  localStorage.removeItem(HISTORY_KEY);
+  renderRecentAudits();
+}
+
+function restoreAudit(id) {
+  const snapshot = state.history.find(item => item.id === id);
+  if (!snapshot) return;
+  state.file = null;
+  state.analysisResult = snapshot.analysisResult;
+  state.targetCol = snapshot.targetCol || '';
+  state.sensitiveCol = snapshot.sensitiveCol || '';
+  state.sensitiveCol2 = snapshot.sensitiveCol2 || '';
+  state.audience = snapshot.audience || 'ngo';
+  state.domain = snapshot.domain || 'hiring';
+  state.datasetLabel = snapshot.datasetLabel || 'Saved audit';
+  state.analysisSource = 'history';
+  document.getElementById('domainSlug').textContent = snapshot.datasetLabel || 'saved-audit';
+  document.querySelectorAll('.pill-btn').forEach(btn => btn.classList.remove('active'));
+  const pillId = snapshot.domain ? `pill${snapshot.domain.charAt(0).toUpperCase()}${snapshot.domain.slice(1)}` : '';
+  const pill = pillId ? document.getElementById(pillId) : null;
+  if (pill) pill.classList.add('active');
+  document.querySelectorAll('.aud-btn').forEach(btn => btn.classList.remove('active'));
+  const audienceButton = [...document.querySelectorAll('.aud-btn')].find(btn => btn.textContent.toLowerCase().includes(snapshot.audience === 'policy' ? 'policy' : snapshot.audience));
+  if (audienceButton) audienceButton.classList.add('active');
+  resetWhatifWorkspace();
+  clearInlineMessage('setupError');
+  showInlineMessage('setupNote', 'Loaded a saved audit snapshot from recent history.', 'info');
+  renderAll();
+  showResults();
+  nav('overview');
+}
+
+function openHeatmapDetail(cell) {
+  if (!cell) return;
+  if (state.activeHeatmapCell) state.activeHeatmapCell.classList.remove('active');
+  state.activeHeatmapCell = cell;
+  cell.classList.add('active');
+  document.getElementById('detailTitle').textContent = cell.dataset.label || 'Subgroup';
+  document.getElementById('detailRate').textContent = cell.dataset.rate || '—';
+  document.getElementById('detailSample').textContent = cell.dataset.sample || '—';
+  document.getElementById('detailSignal').textContent = cell.dataset.signal || 'Review';
+  document.getElementById('detailBody').textContent = cell.dataset.note || 'This subgroup cell summarizes approval rate and sample size.';
+  document.getElementById('detailBackdrop').classList.add('open');
+}
+
+function closeHeatmapDetail() {
+  document.getElementById('detailBackdrop').classList.remove('open');
+  if (state.activeHeatmapCell) state.activeHeatmapCell.classList.remove('active');
+  state.activeHeatmapCell = null;
+}
+
+function bindHeatmapCells() {
+  document.querySelectorAll('.hmap-cell').forEach(cell => {
+    if (cell.dataset.bound === '1') return;
+    cell.dataset.bound = '1';
+    cell.addEventListener('click', () => openHeatmapDetail(cell));
+    cell.addEventListener('keydown', event => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        openHeatmapDetail(cell);
+      }
+    });
+  });
+}
+
 // ── NAV ──
 function nav(page, el) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.querySelectorAll('.nav-item, .mobile-nav-btn').forEach(n => n.classList.remove('active'));
   document.getElementById('page-' + page).classList.add('active');
-  if (el) el.classList.add('active');
+  document.querySelectorAll(`[data-page="${page}"]`).forEach(n => n.classList.add('active'));
 }
 
 // ── DOMAIN SWITCH ──
 function switchDomain(domain, el) {
   state.domain = domain;
+  state.analysisSource = 'demo';
+  state.datasetLabel = `${domain}-demo.csv`;
+  closeHeatmapDetail();
   document.querySelectorAll('.pill-btn').forEach(b => b.classList.remove('active'));
   el.classList.add('active');
   const d = DEMO[domain];
   document.getElementById('domainSlug').textContent = d.slug;
   state.analysisResult = { stats: d.stats, shap: d.shap, explanation: d.explanation, fixes: d.fixes, curves: d.curves };
+  resetWhatifWorkspace();
   renderAll();
   showResults();
 }
@@ -544,6 +1108,9 @@ function switchDomain(domain, el) {
 function onFileSelected(input) {
   if (input.files && input.files[0]) {
     state.file = input.files[0];
+    state.datasetLabel = input.files[0].name;
+    clearInlineMessage('setupError');
+    clearInlineMessage('setupNote');
     document.getElementById('uploadLabel').textContent = input.files[0].name;
     document.getElementById('uploadBtn').classList.add('has-file');
     detectColumns(input.files[0]);
@@ -577,18 +1144,21 @@ async function detectColumns(file) {
 async function runAnalysis() {
   const targetCol = document.getElementById('targetSel').value;
   const sensitiveCol = document.getElementById('sensitiveSel').value;
+  clearInlineMessage('setupError');
+  clearInlineMessage('setupNote');
   if (!state.file && !targetCol) {
     switchDomain(state.domain, document.querySelector('.pill-btn.active'));
     return;
   }
-  if (!state.file) { alert('Please upload a CSV file first.'); return; }
-  if (!targetCol) { alert('Please select a target column.'); return; }
-  if (!sensitiveCol) { alert('Please select a sensitive attribute column.'); return; }
+  if (!state.file) { showInlineMessage('setupError', 'Upload a CSV file to start the audit.'); return; }
+  if (!targetCol) { showInlineMessage('setupError', 'Choose the outcome column EquiLens should evaluate.'); return; }
+  if (!sensitiveCol) { showInlineMessage('setupError', 'Choose the sensitive attribute you want to test for fairness.'); return; }
 
   const btn = document.getElementById('runBtn');
   btn.disabled = true;
   btn.classList.add('running');
-  btn.innerHTML = '<span class="spinner"></span> Analyzing...';
+  btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><polygon points="4,2 14,8 4,14"/></svg> Analyzing…';
+  showAnalysisSkeleton();
 
   try {
     const formData = new FormData();
@@ -603,16 +1173,21 @@ async function runAnalysis() {
     state.targetCol = targetCol;
     state.sensitiveCol = sensitiveCol;
     state.sensitiveCol2 = sensitiveCol2;
+    state.analysisSource = 'live';
+    state.datasetLabel = state.file ? state.file.name : 'Uploaded dataset';
     renderAll();
+    hideAnalysisSkeleton();
     showResults();
+    recordAuditHistory();
     loadWhatifFeatures();
   } catch (err) {
-    alert('Could not connect to EquiLens backend.\n\nLoading demo data instead.');
+    hideAnalysisSkeleton();
+    showInlineMessage('setupNote', 'The backend could not be reached, so EquiLens loaded the demo audit instead.', 'info');
     switchDomain(state.domain, document.querySelector('.pill-btn.active'));
   } finally {
     btn.disabled = false;
     btn.classList.remove('running');
-    btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><polygon points="4,2 14,8 4,14"/></svg> Analyze';
+    btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><polygon points="4,2 14,8 4,14"/></svg> Run Audit';
   }
 }
 
@@ -621,6 +1196,7 @@ function renderAll() {
   if (!state.analysisResult) return;
   const d = state.analysisResult;
   const domain = DEMO[state.domain];
+  renderOverviewLead(d.stats);
   renderScoreGrid(d.stats);
   renderApprovalChart(d.stats);
   renderGroupTable(d.stats);
@@ -635,18 +1211,53 @@ function renderAll() {
 }
 
 function showResults() {
+  hideAnalysisSkeleton();
   document.getElementById('emptyState').style.display = 'none';
   document.getElementById('resultsState').style.display = 'block';
+}
+
+function showLanding() {
+  hideAnalysisSkeleton();
+  document.getElementById('emptyState').style.display = 'block';
+  document.getElementById('resultsState').style.display = 'none';
+}
+
+function showInlineMessage(id, message, type = 'error') {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = message;
+  if (el.classList.contains('section-notice')) {
+    el.classList.remove('error', 'info');
+    el.classList.add(type === 'info' ? 'info' : 'error');
+  }
+  el.classList.add('visible');
+}
+
+function clearInlineMessage(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = '';
+  el.classList.remove('visible', 'error', 'info');
+}
+
+function showAnalysisSkeleton() {
+  document.getElementById('analysisSkeleton').classList.add('visible');
+  document.getElementById('emptyState').style.display = 'none';
+  document.getElementById('resultsState').style.display = 'none';
+}
+
+function hideAnalysisSkeleton() {
+  document.getElementById('analysisSkeleton').classList.remove('visible');
 }
 
 // ── SCORE GRID ──
 function renderScoreGrid(stats) {
   const { spd, di, bias_detected, severity } = stats;
   const cards = [
-    { lbl: 'Disparate Impact', val: di.toFixed(3), cls: di >= 0.8 ? 'good' : di >= 0.6 ? 'warn' : 'bad', note: di < 0.8 ? 'Violates 80% rule' : 'Compliant' },
-    { lbl: 'Stat. Parity Diff', val: (spd * 100).toFixed(1) + '%', cls: spd <= 0.1 ? 'good' : spd <= 0.2 ? 'warn' : 'bad', note: 'Approval gap between groups' },
-    { lbl: 'Bias Detected', val: bias_detected ? 'YES' : 'NO', cls: bias_detected ? 'bad' : 'good', note: 'Severity: ' + (severity || 'unknown') },
-    { lbl: 'Overall Severity', val: (severity || 'unknown').toUpperCase(), cls: severity === 'high' ? 'bad' : severity === 'medium' ? 'warn' : 'good', note: 'Based on DI and SPD' },
+    { lbl: 'Disparate Impact', val: di.toFixed(3), cls: di >= 0.8 ? 'good' : di >= 0.6 ? 'warn' : 'bad', note: di < 0.8 ? 'Below the 0.80 rule-of-thumb threshold.' : 'Within the common 0.80 threshold.' },
+    { lbl: 'Statistical Parity', val: (spd * 100).toFixed(1) + '%', cls: spd <= 0.1 ? 'good' : spd <= 0.2 ? 'warn' : 'bad', note: 'Gap between the most and least favored groups.' },
+    { lbl: 'Bias Detected', val: bias_detected ? 'Yes' : 'No', cls: bias_detected ? 'bad' : 'good', note: 'Binary signal based on the fairness checks returned.' },
+    { lbl: 'Severity', val: (severity || 'unknown').toUpperCase(), cls: severity === 'high' ? 'bad' : severity === 'medium' ? 'warn' : 'good', note: 'Combined reading across the returned fairness metrics.' },
   ];
   document.getElementById('scoreGrid').innerHTML = cards.map(c => `
     <div class="score-card ${c.cls}">
@@ -656,11 +1267,30 @@ function renderScoreGrid(stats) {
     </div>`).join('');
 }
 
+function renderOverviewLead(stats) {
+  const severe = stats.severity || 'unknown';
+  const title = stats.bias_detected
+    ? `${severe.charAt(0).toUpperCase() + severe.slice(1)} fairness risk detected`
+    : 'No major fairness risk detected';
+  const desc = stats.bias_detected
+    ? `The current dataset shows a meaningful group disparity. Disparate Impact is ${stats.di.toFixed(3)} and Statistical Parity Difference is ${(stats.spd * 100).toFixed(1)}%. Review the group gap, explanation, and remediation guidance below before deployment.`
+    : `The returned fairness metrics do not currently indicate a major disparity. Review the explanation and subgroup details below before treating the dataset as fully safe.`;
+  const meta = [
+    `Audience: ${state.audience.toUpperCase()}`,
+    `Sensitive: ${state.sensitiveCol || 'Demo mode'}`,
+    `Target: ${state.targetCol || 'Outcome'}`,
+    `Severity: ${severe.toUpperCase()}`
+  ];
+  document.getElementById('overviewTitle').textContent = title;
+  document.getElementById('overviewDesc').textContent = desc;
+  document.getElementById('overviewMeta').innerHTML = meta.map(item => `<span class="overview-chip">${item}</span>`).join('');
+}
+
 // ── APPROVAL CHART ──
 function renderApprovalChart(stats) {
   const groups = Object.keys(stats.group_stats);
   const rates = groups.map(g => Math.round(stats.group_stats[g].positive_rate * 100));
-  const colors = ['#6c63ff', '#ff4d6d', '#ffb347', '#00e5b0'];
+  const colors = ['#1f6c72', '#6c8f84', '#b66f18', '#b42318'];
   document.getElementById('diTag').textContent = 'DI: ' + stats.di.toFixed(3);
   document.getElementById('diTag').className = 'badge ' + (stats.di < 0.8 ? 'badge-red' : 'badge-green');
   if (state.charts.approval) state.charts.approval.destroy();
@@ -671,8 +1301,8 @@ function renderApprovalChart(stats) {
       responsive: true, maintainAspectRatio: false,
       plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ctx.raw + '% approval rate' } } },
       scales: {
-        x: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#6868a0', font: { family: 'IBM Plex Mono', size: 11 } } },
-        y: { min: 0, max: 100, grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#6868a0', callback: v => v + '%', font: { family: 'IBM Plex Mono', size: 10 } } }
+        x: { grid: { color: 'rgba(17,34,40,0.08)' }, ticks: { color: '#61747a', font: { family: 'IBM Plex Mono', size: 11 } } },
+        y: { min: 0, max: 100, grid: { color: 'rgba(17,34,40,0.08)' }, ticks: { color: '#61747a', callback: v => v + '%', font: { family: 'IBM Plex Mono', size: 10 } } }
       }
     }
   });
@@ -694,27 +1324,65 @@ function renderGroupTable(stats) {
 // ── AI EXPLANATION ──
 function renderAIExplanation(text) {
   const el = document.getElementById('aiExplanation');
+  const box = el.closest('.ai-box');
+  const status = document.getElementById('audienceStatus');
   el.classList.remove('pending');
+  el.classList.remove('updating');
   el.textContent = text || 'No explanation available.';
+  if (state.analysisResult) state.analysisResult.explanation = el.textContent;
+  if (box) box.classList.remove('loading');
+  if (status) {
+    status.textContent = 'Ready';
+    status.classList.remove('loading');
+  }
 }
 
 function setAudience(audience, el) {
   state.audience = audience;
   document.querySelectorAll('.aud-btn').forEach(b => b.classList.remove('active'));
   el.classList.add('active');
-  if (state.file && state.analysisResult) fetchExplanation();
+  if (state.analysisSource === 'live' && state.analysisResult) fetchExplanation();
+  else if (state.analysisResult?.explanation) renderAIExplanation(state.analysisResult.explanation);
   else renderAIExplanation(DEMO[state.domain].explanation);
 }
 
 async function fetchExplanation() {
-  if (!state.file) return;
-  const formData = new FormData();
-  formData.append('file', state.file);
+  const requestId = ++state.explanationRequestId;
+  state.explanationLoading = true;
+  const explanationEl = document.getElementById('aiExplanation');
+  const box = explanationEl.closest('.ai-box');
+  const status = document.getElementById('audienceStatus');
+  document.querySelectorAll('.aud-btn').forEach(btn => btn.disabled = true);
+  explanationEl.classList.add('updating');
+  if (box) box.classList.add('loading');
+  if (status) {
+    status.textContent = `Updating for ${state.audience.toUpperCase()}...`;
+    status.classList.add('loading');
+  }
   try {
-    const res = await fetch(`${API_BASE}/analyze?target_col=${state.targetCol}&sensitive_col=${state.sensitiveCol}&audience=${state.audience}`, { method: 'POST', body: formData });
+    const res = await fetch(`${API_BASE}/explanation`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ audience: state.audience })
+    });
+    if (!res.ok) throw new Error('Explanation refresh failed');
     const data = await res.json();
+    if (requestId !== state.explanationRequestId) return;
     renderAIExplanation(data.explanation);
-  } catch(e) {}
+  } catch(e) {
+    if (requestId !== state.explanationRequestId) return;
+    if (status) {
+      status.textContent = 'Could not refresh';
+      status.classList.remove('loading');
+    }
+    explanationEl.classList.remove('updating');
+    if (box) box.classList.remove('loading');
+  } finally {
+    if (requestId === state.explanationRequestId) {
+      state.explanationLoading = false;
+      document.querySelectorAll('.aud-btn').forEach(btn => btn.disabled = false);
+    }
+  }
 }
 
 // ── REG PILLS ──
@@ -732,17 +1400,17 @@ function renderRegPills(isBiased) {
 function renderMetrics(stats) {
   const { spd, di } = stats;
   const defs = [
-    { name: 'Disparate Impact ratio', val: di, good: v => v >= 0.8, fmt: v => v.toFixed(3), max: 1, color: di >= 0.8 ? 'var(--success)' : di >= 0.6 ? 'var(--warn)' : 'var(--danger)' },
-    { name: 'Statistical Parity Difference', val: spd, good: v => v <= 0.1, fmt: v => (v*100).toFixed(1)+'%', max: 0.5, color: spd <= 0.1 ? 'var(--success)' : spd <= 0.2 ? 'var(--warn)' : 'var(--danger)' },
-    { name: 'Equalized Odds gap', val: stats.eod ?? spd * 0.85, good: v => v <= 0.1, fmt: v => (v*100).toFixed(1)+'%', max: 0.5, color: (stats.eod ?? spd*0.85) <= 0.1 ? 'var(--success)' : (stats.eod ?? spd*0.85) <= 0.2 ? 'var(--warn)' : 'var(--danger)' },
-    { name: 'Calibration score (est.)', val: Math.max(0.5, 1 - spd * 0.4), good: v => v >= 0.85, fmt: v => (v*100).toFixed(0)+'%', max: 1, color: (1-spd*0.4) >= 0.85 ? 'var(--success)' : 'var(--warn)' },
+    { name: 'Disparate Impact ratio', threshold: 'Target: 0.80 or higher', val: di, good: v => v >= 0.8, fmt: v => v.toFixed(3), max: 1, color: di >= 0.8 ? 'var(--success)' : di >= 0.6 ? 'var(--warn)' : 'var(--danger)' },
+    { name: 'Statistical Parity Difference', threshold: 'Target: 10% gap or less', val: spd, good: v => v <= 0.1, fmt: v => (v*100).toFixed(1)+'%', max: 0.5, color: spd <= 0.1 ? 'var(--success)' : spd <= 0.2 ? 'var(--warn)' : 'var(--danger)' },
+    { name: 'Equalized Odds gap', threshold: 'Target: 10% gap or less', val: stats.eod ?? spd * 0.85, good: v => v <= 0.1, fmt: v => (v*100).toFixed(1)+'%', max: 0.5, color: (stats.eod ?? spd*0.85) <= 0.1 ? 'var(--success)' : (stats.eod ?? spd*0.85) <= 0.2 ? 'var(--warn)' : 'var(--danger)' },
+    { name: 'Calibration score (est.)', threshold: 'Target: 85% or higher', val: Math.max(0.5, 1 - spd * 0.4), good: v => v >= 0.85, fmt: v => (v*100).toFixed(0)+'%', max: 1, color: (1-spd*0.4) >= 0.85 ? 'var(--success)' : 'var(--warn)' },
   ];
   const fail = defs.filter(d => !d.good(d.val)).length;
   document.getElementById('metricsBadge').textContent = fail + ' failed';
   document.getElementById('metricsBadge').className = 'badge ' + (fail >= 3 ? 'badge-red' : 'badge-amber');
   document.getElementById('metricRows').innerHTML = defs.map(d => {
     const pct = Math.min(100, (d.val / d.max) * 100);
-    return `<div class="m-row"><div class="m-name">${d.name}</div><div class="m-track"><div class="m-fill" style="width:${pct.toFixed(0)}%;background:${d.color}"></div></div><div class="m-val" style="color:${d.color}">${d.fmt(d.val)}</div></div>`;
+    return `<div class="m-row"><div class="m-name">${d.name}<span class="m-threshold">${d.threshold}</span></div><div class="m-track"><div class="m-fill" style="width:${pct.toFixed(0)}%;background:${d.color}"></div></div><div class="m-val" style="color:${d.color}">${d.fmt(d.val)}</div></div>`;
   }).join('');
   document.getElementById('metricsAI').textContent = `The Disparate Impact Ratio of ${di.toFixed(3)} ${di < 0.8 ? 'falls below the legal threshold of 0.80, indicating the system violates the EEOC 80% rule' : 'meets the legal threshold of 0.80'}. The Statistical Parity Difference of ${(spd*100).toFixed(1)}% means there is a ${(spd*100).toFixed(1)} percentage point gap in approval rates between the most and least favored groups.`;
   document.getElementById('metricsAI').classList.remove('pending');
@@ -752,8 +1420,8 @@ function renderMetrics(stats) {
 function renderCalibROC(curves, stats) {
   if (state.charts.calib) state.charts.calib.destroy();
   if (state.charts.roc) state.charts.roc.destroy();
-  const chartColors = ['#6c63ff', '#ff4d6d', '#ffb347', '#00e5b0'];
-  const commonOpts = { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#6868a0', boxWidth: 12, font: { size: 10 } } } } };
+  const chartColors = ['#1f6c72', '#6c8f84', '#b66f18', '#b42318'];
+  const commonOpts = { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#61747a', boxWidth: 12, font: { size: 10 } } } } };
   function labelFor(key) {
     if (!stats) return key;
     const groupNames = Object.keys(stats.group_stats);
@@ -769,12 +1437,12 @@ function renderCalibROC(curves, stats) {
       borderColor: chartColors[i % chartColors.length], backgroundColor: chartColors[i % chartColors.length],
       tension: 0.3, pointRadius: 4, fill: false, showLine: true, borderDash: i > 0 ? [4, 3] : []
     }));
-    calibDatasets.push({ label: 'Perfect', data: [{x:0,y:0},{x:100,y:100}], borderColor: 'rgba(255,255,255,0.15)', tension: 0, pointRadius: 0, borderDash: [2,4], fill: false, showLine: true });
+    calibDatasets.push({ label: 'Perfect', data: [{x:0,y:0},{x:100,y:100}], borderColor: 'rgba(17,34,40,0.18)', tension: 0, pointRadius: 0, borderDash: [2,4], fill: false, showLine: true });
     state.charts.calib = new Chart(document.getElementById('calibChart'), {
       type: 'scatter', data: { datasets: calibDatasets },
       options: { ...commonOpts, scales: {
-        x: { title: { display: true, text: 'Mean predicted', color: '#6868a0', font: { size: 11 } }, min: 0, max: 100, ticks: { color: '#6868a0', callback: v => v+'%', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } },
-        y: { title: { display: true, text: 'Fraction positive', color: '#6868a0', font: { size: 11 } }, min: 0, max: 100, ticks: { color: '#6868a0', callback: v => v+'%', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } }
+        x: { title: { display: true, text: 'Mean predicted', color: '#61747a', font: { size: 11 } }, min: 0, max: 100, ticks: { color: '#61747a', callback: v => v+'%', font: { size: 10 } }, grid: { color: 'rgba(17,34,40,0.08)' } },
+        y: { title: { display: true, text: 'Fraction positive', color: '#61747a', font: { size: 11 } }, min: 0, max: 100, ticks: { color: '#61747a', callback: v => v+'%', font: { size: 10 } }, grid: { color: 'rgba(17,34,40,0.08)' } }
       }}
     });
   }
@@ -786,12 +1454,12 @@ function renderCalibROC(curves, stats) {
       borderColor: chartColors[i % chartColors.length], backgroundColor: chartColors[i % chartColors.length],
       tension: 0.3, pointRadius: 2, fill: false, showLine: true, borderDash: i > 0 ? [4, 3] : []
     }));
-    rocDatasets.push({ label: 'Random', data: [{x:0,y:0},{x:100,y:100}], borderColor: 'rgba(255,255,255,0.1)', tension: 0, pointRadius: 0, borderDash: [2,4], fill: false, showLine: true });
+    rocDatasets.push({ label: 'Random', data: [{x:0,y:0},{x:100,y:100}], borderColor: 'rgba(17,34,40,0.14)', tension: 0, pointRadius: 0, borderDash: [2,4], fill: false, showLine: true });
     state.charts.roc = new Chart(document.getElementById('rocChart'), {
       type: 'scatter', data: { datasets: rocDatasets },
       options: { ...commonOpts, scales: {
-        x: { title: { display: true, text: 'FPR', color: '#6868a0', font: { size: 11 } }, min: 0, max: 100, ticks: { color: '#6868a0', callback: v => v+'%', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } },
-        y: { title: { display: true, text: 'TPR', color: '#6868a0', font: { size: 11 } }, min: 0, max: 100, ticks: { color: '#6868a0', callback: v => v+'%', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } }
+        x: { title: { display: true, text: 'FPR', color: '#61747a', font: { size: 11 } }, min: 0, max: 100, ticks: { color: '#61747a', callback: v => v+'%', font: { size: 10 } }, grid: { color: 'rgba(17,34,40,0.08)' } },
+        y: { title: { display: true, text: 'TPR', color: '#61747a', font: { size: 11 } }, min: 0, max: 100, ticks: { color: '#61747a', callback: v => v+'%', font: { size: 10 } }, grid: { color: 'rgba(17,34,40,0.08)' } }
       }}
     });
   }
@@ -826,6 +1494,7 @@ function renderSHAP(shap) {
 
 // ── INTERSECTIONALITY ──
 function renderIntersect(stats, intersectionality) {
+  const sparseThreshold = 20;
   function cellBg(v) {
     if (v === null) return 'rgba(255,255,255,0.03)';
     if (v >= 0.7) return 'rgba(64,217,139,0.25)';
@@ -840,20 +1509,81 @@ function renderIntersect(stats, intersectionality) {
     if (v >= 0.5) return 'var(--warn)';
     return 'var(--danger)';
   }
+  function legendMarkup() {
+    return `
+      <span class="hmap-legend-item"><span class="hmap-legend-chip"></span>Stable sample</span>
+      <span class="hmap-legend-item"><span class="hmap-legend-chip sparse"></span>Small sample</span>
+      <span class="hmap-legend-item"><span class="hmap-legend-chip null"></span>Missing or insufficient data</span>
+      <div class="hmap-legend-note">Tap or click a cell to inspect its approval rate and sample size. Cells with fewer than ${sparseThreshold} records should be treated as directional, not conclusive.</div>
+    `;
+  }
+  function findIntersectionEntry(groups, rowLabel, colLabel) {
+    if (!groups) return null;
+    const directKeys = [
+      `${rowLabel} × ${colLabel}`,
+      `${rowLabel} x ${colLabel}`,
+      `${rowLabel}|${colLabel}`,
+      `${rowLabel} | ${colLabel}`,
+      `${rowLabel}/${colLabel}`,
+      `${rowLabel} / ${colLabel}`,
+      `${rowLabel}, ${colLabel}`,
+      `${rowLabel}-${colLabel}`,
+      `${rowLabel} & ${colLabel}`,
+    ];
+    for (const key of directKeys) {
+      if (groups[key]) return groups[key];
+    }
+    const normalizedRow = String(rowLabel).toLowerCase();
+    const normalizedCol = String(colLabel).toLowerCase();
+    const match = Object.entries(groups).find(([key]) => {
+      const normalizedKey = key.toLowerCase();
+      return normalizedKey.includes(normalizedRow) && normalizedKey.includes(normalizedCol);
+    });
+    return match ? match[1] : null;
+  }
+  function heatmapCell(label, value, count) {
+    const hasRate = value !== null && value !== undefined;
+    const hasCount = Number.isFinite(count);
+    const isNull = !hasRate || (hasCount && count === 0);
+    const isSparse = !isNull && hasCount && count < sparseThreshold;
+    const main = hasRate ? `${(value * 100).toFixed(0)}%` : '—';
+    const sub = hasCount ? `n=${count.toLocaleString()}` : 'n/a';
+    const tooltip = isNull
+      ? `${label}: no reliable subgroup sample was available.`
+      : isSparse
+        ? `${label}: ${(value * 100).toFixed(1)}% approval from n=${count.toLocaleString()}. Treat this as directional because the sample is small.`
+        : `${label}: ${(value * 100).toFixed(1)}% approval from n=${count.toLocaleString()}.`;
+    const cls = isNull ? 'null' : isSparse ? 'sparse' : '';
+    const signal = isNull ? 'Insufficient data' : isSparse ? 'Small sample' : 'Stable sample';
+    const sampleText = hasCount ? `${count.toLocaleString()} rows` : 'Sample unavailable';
+    const safeTooltip = tooltip.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const safeLabel = String(label).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const safeSignal = signal.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+    const safeSampleText = sampleText.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+    return `<div class="hmap-cell ${cls}" role="button" tabindex="0" data-label="${safeLabel}" data-rate="${main}" data-sample="${safeSampleText}" data-signal="${safeSignal}" data-note="${safeTooltip}" title="${safeTooltip}" aria-label="${safeTooltip}" style="background:${cellBg(hasRate ? value : null)};color:${cellColor(hasRate ? value : null)}"><span class="hmap-cell-main">${main}</span><span class="hmap-cell-sub">${sub}</span></div>`;
+  }
+  const legend = document.getElementById('intersectLegend');
+  if (legend) legend.innerHTML = legendMarkup();
   if (intersectionality && intersectionality.matrix) {
     const { col1, col2, col1_values, col2_values, matrix, groups } = intersectionality;
     document.getElementById('intersectBadge').textContent = `${col1} × ${col2}`;
     const hdr = `<div class="hmap-header"><div class="hmap-col-lbl" style="min-width:100px;flex:0"></div>${col2_values.map(c => `<div class="hmap-col-lbl">${c}</div>`).join('')}</div>`;
+    let sparseCells = 0;
+    let missingCells = 0;
     const rows = col1_values.map(r => `
       <div class="hmap-row">
         <div class="hmap-lbl">${r}</div>
         ${col2_values.map(c => {
           const v = (matrix[r] && matrix[r][c] !== undefined) ? matrix[r][c] : null;
-          const display = v !== null ? `${(v * 100).toFixed(0)}%` : '—';
-          return `<div class="hmap-cell" style="background:${cellBg(v)};color:${cellColor(v)}">${display}</div>`;
+          const entry = findIntersectionEntry(groups, r, c);
+          const count = Number.isFinite(entry?.count) ? entry.count : null;
+          if (v === null || (count !== null && count === 0)) missingCells += 1;
+          else if (count !== null && count < sparseThreshold) sparseCells += 1;
+          return heatmapCell(`${r} × ${c}`, v, count);
         }).join('')}
       </div>`).join('');
     document.getElementById('heatmapWrap').innerHTML = hdr + rows;
+    bindHeatmapCells();
     const valid = Object.entries(groups).filter(([, v]) => v.positive_rate !== null).sort(([, a], [, b]) => a.positive_rate - b.positive_rate);
     const maxRate = valid.length > 0 ? valid[valid.length - 1][1].positive_rate : 1;
     document.getElementById('subgroupTable').innerHTML = `
@@ -866,14 +1596,22 @@ function renderIntersect(stats, intersectionality) {
     if (valid.length > 0) {
       const worst = valid[0]; const best = valid[valid.length - 1];
       const gap = ((best[1].positive_rate - worst[1].positive_rate) * 100).toFixed(1);
-      document.getElementById('intersectAI').textContent = `Intersectional analysis across ${col1} × ${col2} reveals ${valid.length} subgroups. Most disadvantaged: "${worst[0]}" at ${(worst[1].positive_rate * 100).toFixed(1)}% approval (n=${worst[1].count.toLocaleString()}). Most privileged: "${best[0]}" at ${(best[1].positive_rate * 100).toFixed(1)}%. A gap of ${gap} percentage points — intersecting identities compound disadvantage beyond what single-attribute analysis reveals.`;
+      const dataCaution = sparseCells > 0 || missingCells > 0
+        ? ` ${sparseCells > 0 ? `${sparseCells} cell${sparseCells > 1 ? 's show' : ' shows'} a small sample.` : ''}${missingCells > 0 ? ` ${missingCells} cell${missingCells > 1 ? 's are' : ' is'} missing or too sparse to interpret.` : ''}`.trim()
+        : '';
+      document.getElementById('intersectAI').textContent = `Intersectional analysis across ${col1} × ${col2} reveals ${valid.length} subgroups. Most disadvantaged: "${worst[0]}" at ${(worst[1].positive_rate * 100).toFixed(1)}% approval (n=${worst[1].count.toLocaleString()}). Most privileged: "${best[0]}" at ${(best[1].positive_rate * 100).toFixed(1)}%. A gap of ${gap} percentage points shows how intersecting identities can compound disadvantage.${dataCaution ? ` ${dataCaution}` : ''}`;
     }
   } else {
     const groups = Object.keys(stats.group_stats);
     document.getElementById('intersectBadge').textContent = groups.join(' × ');
     const hdr = `<div class="hmap-header">${groups.map(g => `<div class="hmap-col-lbl">${g}</div>`).join('')}</div>`;
-    const singleRow = `<div class="hmap-row"><div class="hmap-lbl">Approval</div>${groups.map(g => { const v = stats.group_stats[g].positive_rate; return `<div class="hmap-cell" style="background:${cellBg(v)};color:${cellColor(v)}">${(v*100).toFixed(0)}%</div>`; }).join('')}</div>`;
+    const singleRow = `<div class="hmap-row"><div class="hmap-lbl">Approval</div>${groups.map(g => {
+      const v = stats.group_stats[g].positive_rate;
+      const count = Number.isFinite(stats.group_stats[g].count) ? stats.group_stats[g].count : null;
+      return heatmapCell(g, v, count);
+    }).join('')}</div>`;
     document.getElementById('heatmapWrap').innerHTML = hdr + singleRow;
+    bindHeatmapCells();
     const sorted = [...groups].sort((a, b) => stats.group_stats[a].positive_rate - stats.group_stats[b].positive_rate);
     const maxRate = stats.group_stats[sorted[sorted.length - 1]].positive_rate;
     document.getElementById('subgroupTable').innerHTML = `
@@ -886,7 +1624,8 @@ function renderIntersect(stats, intersectionality) {
       }).join('')}</tbody>`;
     const least = sorted[0]; const most = sorted[sorted.length - 1];
     const gap = ((stats.group_stats[most].positive_rate - stats.group_stats[least].positive_rate) * 100).toFixed(1);
-    document.getElementById('intersectAI').textContent = `Single-attribute analysis: ${most} has the highest approval rate at ${(stats.group_stats[most].positive_rate*100).toFixed(1)}%, while ${least} has the lowest at ${(stats.group_stats[least].positive_rate*100).toFixed(1)}% — a gap of ${gap}pp. Select a second sensitive attribute (e.g. race) to reveal compounded intersectional disadvantage.`;
+    const sparseGroups = groups.filter(g => Number.isFinite(stats.group_stats[g].count) && stats.group_stats[g].count < sparseThreshold).length;
+    document.getElementById('intersectAI').textContent = `Single-attribute analysis: ${most} has the highest approval rate at ${(stats.group_stats[most].positive_rate*100).toFixed(1)}%, while ${least} has the lowest at ${(stats.group_stats[least].positive_rate*100).toFixed(1)}% — a gap of ${gap}pp. Select a second sensitive attribute to reveal compounded disadvantage.${sparseGroups > 0 ? ` ${sparseGroups} group${sparseGroups > 1 ? 's have' : ' has'} a small sample, so interpret those cells cautiously.` : ''}`;
   }
   document.getElementById('intersectAI').classList.remove('pending');
 }
@@ -914,6 +1653,21 @@ function renderWiFeatures(features) {
   updateWiCount();
 }
 
+function resetWhatifWorkspace() {
+  clearInlineMessage('wiNotice');
+  const noData = document.getElementById('wiNoDataMsg');
+  const featureSection = document.getElementById('wiFeatureSection');
+  const featureGrid = document.getElementById('wiFeatureGrid');
+  const selectedList = document.getElementById('wiSelectedList');
+  if (noData) noData.style.display = 'block';
+  if (featureSection) featureSection.style.display = 'none';
+  if (featureGrid) featureGrid.innerHTML = '';
+  if (selectedList) selectedList.innerHTML = '<span class="wi-chip empty">No features selected yet</span>';
+  const count = document.getElementById('wiSelectedCount');
+  if (count) count.textContent = '0 features selected';
+  document.getElementById('wiResults').style.display = 'none';
+}
+
 function toggleWiFeature(el) {
   const cb = el.querySelector('input');
   cb.checked = !cb.checked;
@@ -922,19 +1676,28 @@ function toggleWiFeature(el) {
 }
 
 function updateWiCount() {
-  const n = document.querySelectorAll('.wi-check.selected').length;
+  const selected = [...document.querySelectorAll('.wi-check.selected input')].map(el => el.value);
+  const n = selected.length;
   document.getElementById('wiSelectedCount').textContent = n === 0
     ? '0 features selected'
     : `${n} feature${n > 1 ? 's' : ''} selected`;
+  const selectedList = document.getElementById('wiSelectedList');
+  if (selectedList) {
+    selectedList.innerHTML = n === 0
+      ? '<span class="wi-chip empty">No features selected yet</span>'
+      : selected.map(name => `<span class="wi-chip">${name}</span>`).join('');
+  }
 }
 
 async function runWhatif() {
   const selected = [...document.querySelectorAll('.wi-check.selected input')].map(el => el.value);
-  if (selected.length === 0) { alert('Select at least one feature to drop.'); return; }
+  clearInlineMessage('wiNotice');
+  if (selected.length === 0) { showInlineMessage('wiNotice', 'Select at least one feature to simulate its removal.', 'error'); return; }
 
   const btn = document.getElementById('wiRunBtn');
   btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span> Simulating...';
+  btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 4h14M1 8h10M1 12h6"/></svg> Simulating…';
+  showInlineMessage('wiNotice', 'Running the what-if simulation on the selected features.', 'info');
 
   try {
     const res = await fetch(`${API_BASE}/whatif`, {
@@ -944,13 +1707,14 @@ async function runWhatif() {
     });
     if (!res.ok) {
       const err = await res.json();
-      alert(err.detail || 'Simulation failed');
+      showInlineMessage('wiNotice', err.detail || 'The simulation could not be completed.', 'error');
       return;
     }
     const data = await res.json();
+    clearInlineMessage('wiNotice');
     renderWiResults(data);
   } catch(e) {
-    alert('Could not reach backend. Make sure /analyze has been run first.');
+    showInlineMessage('wiNotice', 'The simulator could not reach the backend. Run an audit first, then try again.', 'error');
   } finally {
     btn.disabled = false;
     btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 4h14M1 8h10M1 12h6"/></svg> Simulate';
@@ -1013,15 +1777,15 @@ function renderWiResults(data) {
       options: {
         responsive: true, maintainAspectRatio: false,
         plugins: { legend: { display: false } },
-        scales: { r: { min: 0, max: 100, ticks: { display: false }, grid: { color: 'rgba(255,255,255,0.06)' }, pointLabels: { color: '#6868a0', font: { size: 11, family: 'IBM Plex Mono' } }, angleLines: { color: 'rgba(255,255,255,0.04)' } } }
+        scales: { r: { min: 0, max: 100, ticks: { display: false }, grid: { color: 'rgba(17,34,40,0.08)' }, pointLabels: { color: '#61747a', font: { size: 11, family: 'IBM Plex Mono' } }, angleLines: { color: 'rgba(17,34,40,0.06)' } } }
       }
     });
   }
 
   if (state.charts.wiBefore) state.charts.wiBefore.destroy();
   if (state.charts.wiAfter)  state.charts.wiAfter.destroy();
-  state.charts.wiBefore = makeRadar('wiBeforeChart', beforeVals, '#ff4d6d');
-  state.charts.wiAfter  = makeRadar('wiAfterChart',  afterVals,  '#40d98b');
+  state.charts.wiBefore = makeRadar('wiBeforeChart', beforeVals, '#b42318');
+  state.charts.wiAfter  = makeRadar('wiAfterChart',  afterVals,  '#13795b');
 
   // Remaining features list
   document.getElementById('wiRemainingBadge').textContent = remaining_features.length + ' remaining';
@@ -1036,6 +1800,7 @@ function renderWiResults(data) {
 }
 
 function clearWhatif() {
+  clearInlineMessage('wiNotice');
   document.querySelectorAll('.wi-check').forEach(el => {
     el.classList.remove('selected');
     el.querySelector('input').checked = false;
@@ -1075,14 +1840,14 @@ function renderRemediation(d) {
     data: {
       labels,
       datasets: [
-        { label: 'Before', data: beforeVals, borderColor: '#ff4d6d', backgroundColor: 'rgba(255,77,109,0.08)', pointBackgroundColor: '#ff4d6d' },
-        { label: 'After', data: afterVals, borderColor: '#40d98b', backgroundColor: 'rgba(64,217,139,0.08)', pointBackgroundColor: '#40d98b', borderDash: [4, 3] }
+        { label: 'Before', data: beforeVals, borderColor: '#b42318', backgroundColor: 'rgba(180,35,24,0.08)', pointBackgroundColor: '#b42318' },
+        { label: 'After', data: afterVals, borderColor: '#13795b', backgroundColor: 'rgba(19,121,91,0.08)', pointBackgroundColor: '#13795b', borderDash: [4, 3] }
       ]
     },
     options: {
       responsive: true, maintainAspectRatio: false,
       plugins: { legend: { display: false } },
-      scales: { r: { min: 0, max: 100, ticks: { display: false }, grid: { color: 'rgba(255,255,255,0.06)' }, pointLabels: { color: '#6868a0', font: { size: 11, family: 'IBM Plex Mono' } }, angleLines: { color: 'rgba(255,255,255,0.04)' } } }
+      scales: { r: { min: 0, max: 100, ticks: { display: false }, grid: { color: 'rgba(17,34,40,0.08)' }, pointLabels: { color: '#61747a', font: { size: 11, family: 'IBM Plex Mono' } }, angleLines: { color: 'rgba(17,34,40,0.06)' } } }
     }
   };
 
@@ -1098,7 +1863,7 @@ function renderReport(stats) {
   const now = new Date().toLocaleDateString('en-GB', { year: 'numeric', month: 'long', day: 'numeric' });
   const isBiased = stats.di < 0.8;
   document.getElementById('reportMeta').innerHTML = [
-    ['Dataset', state.file ? state.file.name : state.domain + '-demo'],
+    ['Dataset', state.datasetLabel || (state.file ? state.file.name : state.domain + '-demo')],
     ['Sensitive attribute', state.sensitiveCol || 'N/A'],
     ['Audit date', now],
     ['Tool', 'EquiLens AI v1.0'],
@@ -1117,24 +1882,34 @@ function renderReport(stats) {
       `Regulations breached: <strong>${regsBreached}</strong>`,
     ].map(f => `<div style="padding:10px 0;border-bottom:1px solid var(--border);font-size:13px;">${f}</div>`).join('')}
     <div style="margin-top:16px;font-size:12px;color:var(--muted);line-height:1.7;">This audit was generated by EquiLens AI. All metrics are computed on the provided dataset using standard fairness metrics (SPD, DI, EOD). This report does not constitute legal advice.</div>`;
+  document.getElementById('reportHandoff').innerHTML = `
+    <div class="report-handoff-title">Ready to share</div>
+    <div class="report-handoff-copy">Use this report when you need to brief a board, class, NGO team, or policy audience. It packages the fairness verdict, the subgroup gap, and the next steps in one place for a non-technical reader.</div>
+  `;
 }
 
 function copyReport() {
   const stats = state.analysisResult?.stats;
   if (!stats) return;
-  navigator.clipboard.writeText(`EquiLens AI Audit Report\nDisparate Impact: ${stats.di.toFixed(3)}\nSPD: ${(stats.spd*100).toFixed(1)}%\nBias detected: ${stats.bias_detected}\nSeverity: ${stats.severity}`).then(() => alert('Report copied to clipboard.'));
+  navigator.clipboard.writeText(`EquiLens AI Audit Report\nDisparate Impact: ${stats.di.toFixed(3)}\nSPD: ${(stats.spd*100).toFixed(1)}%\nBias detected: ${stats.bias_detected}\nSeverity: ${stats.severity}`).then(() => {
+    showInlineMessage('reportNotice', 'The audit summary was copied to your clipboard.', 'info');
+  }).catch(() => {
+    showInlineMessage('reportNotice', 'EquiLens could not copy the report to your clipboard.', 'error');
+  });
 }
 
 // ── PDF EXPORT ──
 async function exportPDF() {
+  clearInlineMessage('reportNotice');
   if (!state.analysisResult) {
-    alert('Run an analysis first before exporting.');
+    showInlineMessage('reportNotice', 'Run an audit before exporting the report.', 'error');
     return;
   }
 
   const btn = document.getElementById('pdfBtn');
   btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span> Generating PDF...';
+  btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> Preparing PDF…';
+  showInlineMessage('reportNotice', 'Preparing the audit report for download.', 'info');
 
   try {
     const d = state.analysisResult;
@@ -1162,7 +1937,7 @@ async function exportPDF() {
     }
 
     const payload = {
-      dataset:           state.file ? state.file.name : state.domain + '-demo.csv',
+      dataset:           state.datasetLabel || (state.file ? state.file.name : state.domain + '-demo.csv'),
       target_col:        state.targetCol  || 'outcome',
       sensitive_col:     state.sensitiveCol || 'group',
       audience:          state.audience,
@@ -1196,9 +1971,10 @@ async function exportPDF() {
     a.download = `equilens_audit_${payload.sensitive_col}_${new Date().toISOString().slice(0,10)}.pdf`;
     a.click();
     URL.revokeObjectURL(url);
+    showInlineMessage('reportNotice', 'Your PDF audit report is ready and downloading now.', 'info');
 
   } catch (err) {
-    alert('PDF export failed: ' + err.message);
+    showInlineMessage('reportNotice', 'PDF export failed: ' + err.message, 'error');
   } finally {
     btn.disabled = false;
     btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> Download PDF';
@@ -1206,7 +1982,10 @@ async function exportPDF() {
 }
 
 // ── INIT ──
-switchDomain('hiring', document.querySelector('.pill-btn.active'));
+document.getElementById('domainSlug').textContent = 'fairness-audit';
+resetWhatifWorkspace();
+loadAuditHistory();
+showLanding();
 </script>
 </body>
 </html>
