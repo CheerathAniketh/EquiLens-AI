@@ -85,25 +85,25 @@ def explain_results(bias_report, shap_data, audience="ngo"):
     persona = PERSONAS.get(audience, PERSONAS["ngo"])
 
     prompt = f"""
-You are an AI fairness expert explaining bias analysis results to {persona}.
+You are an AI fairness expert. Be extremely concise.
 
-Here is what was found:
-- Groups analyzed: {bias_report['group_stats']}
-- Disparate Impact Ratio: {bias_report['di']} (below 0.8 means discriminatory)
-- Statistical Parity Difference: {bias_report['spd']} (above 0.1 means biased)
+Bias analysis results:
+- Groups: {bias_report['group_stats']}
+- Disparate Impact: {bias_report['di']} (below 0.8 = biased)
+- Outcome gap: {bias_report['spd']} (above 0.1 = biased)
 - Severity: {bias_report['severity']}
-- Most influential features: {shap_data['top_features']}
+- Top features driving decisions: {shap_data['top_features']}
 
-Write exactly 3 short paragraphs:
-1. What bias was found and which group is most affected
-2. Why this matters in real life with one concrete example
-3. Two specific actions to fix this bias
+Write exactly 3 sentences. No more.
+Sentence 1: Which group is disadvantaged and by how much (use the actual numbers).
+Sentence 2: Which feature(s) are causing it and why that's a problem.
+Sentence 3: One specific fix.
 
 Rules:
-- No technical jargon
-- No bullet points inside paragraphs
-- Plain simple language only
-- Keep each paragraph under 4 sentences
+- No intros, no conclusions, no filler
+- Use plain language suited for {persona}
+- Name the actual columns, not generic terms
+- Total response must be under 60 words
 """
 
     try:
