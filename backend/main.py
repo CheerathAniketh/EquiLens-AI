@@ -1,16 +1,18 @@
 import os
+import threading
 import uuid
 from fastapi import FastAPI, UploadFile, File, HTTPException, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 import pandas as pd
+from sklearn.ensemble import RandomForestClassifier
 from typing import List, Optional
 from fastapi.responses import Response
 from pdf_exporter import generate_audit_pdf
 
 from analyzer import analyze_bias, compute_intersectionality, compute_eod
-from trainer import train_and_evaluate
+from trainer import train_and_evaluate, prepare_features
 from explainer import get_shap_values
 from gemini_client import explain_results, suggest_fixes, explain_whatif
 
@@ -26,6 +28,7 @@ app.add_middleware(
 # ─── Multi-user session cache ──────────────────────────────────────────────────
 # Each browser gets a unique session ID so concurrent judges don't clash.
 session_cache: dict = {}
+session_lock = threading.Lock()
 MAX_SESSIONS = 100
 
 
@@ -53,26 +56,67 @@ async def analyze(
     audience: str = "ngo",
     x_session_id: Optional[str] = Header(default=None),
 ):
-    session_id = x_session_id or str(uuid.uuid4())
-    _evict_oldest()
+    try:
+        df = pd.read_csv(file.file)
+    except (pd.errors.ParserError, pd.errors.EmptyDataError, UnicodeDecodeError):
+        raise HTTPException(
+            status_code=400,
+            detail="Could not parse the uploaded file. Please upload a valid, non-empty CSV."
+        )
 
-    df = pd.read_csv(file.file)
+    if target_col not in df.columns:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Column '{target_col}' not found in the uploaded CSV."
+        )
 
-    session_cache[session_id] = {
-        "df": df,
-        "target_col": target_col,
-        "sensitive_col": sensitive_col,
-    }
+    if sensitive_col not in df.columns:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Column '{sensitive_col}' not found in the uploaded CSV."
+        )
+
+    with session_lock:
+        if x_session_id and x_session_id in session_cache:
+            session_id = x_session_id
+        else:
+            session_id = str(uuid.uuid4())
+            while session_id in session_cache:
+                session_id = str(uuid.uuid4())
+
+        _evict_oldest()
+
+        session_cache[session_id] = {
+            "df": df,
+            "target_col": target_col,
+            "sensitive_col": sensitive_col,
+        }
 
     stats = analyze_bias(df, target_col, sensitive_col)
     model, X_train, X_test, y_test, curves, y_pred, y_prob, sensitive_test = train_and_evaluate(
         df, target_col, sensitive_col
     )
+    _, y_all = prepare_features(df, target_col, sensitive_col)
+    y_train = y_all.loc[X_train.index]
+
+    with session_lock:
+        if session_id in session_cache:
+            session_cache[session_id].update({
+                "X_train": X_train,
+                "X_test": X_test,
+                "y_train": y_train,
+                "y_test": y_test,
+            })
+
     shap_data = get_shap_values(model, X_train, X_test)
 
     eod_data = compute_eod(y_test, y_pred, sensitive_test)
     stats["eod"] = eod_data["eod"]
     stats["eod_details"] = eod_data
+
+    with session_lock:
+        if session_id in session_cache:
+            session_cache[session_id]["original_eod"] = eod_data["eod"]
 
     intersectionality = None
     if sensitive_col_2 and sensitive_col_2 != sensitive_col and sensitive_col_2 in df.columns:
@@ -107,12 +151,14 @@ async def analyze(
 
 @app.get("/whatif/features")
 async def whatif_features(x_session_id: Optional[str] = Header(default=None)):
-    if not x_session_id or x_session_id not in session_cache:
-        raise HTTPException(
-            status_code=400,
-            detail="No dataset in cache. Run /analyze first."
-        )
-    session = session_cache[x_session_id]
+    with session_lock:
+        if not x_session_id or x_session_id not in session_cache:
+            raise HTTPException(
+                status_code=400,
+                detail="No dataset in cache. Run /analyze first."
+            )
+        session = session_cache[x_session_id]
+
     df = session["df"]
     target_col = session["target_col"]
     sensitive_col = session["sensitive_col"]
@@ -127,16 +173,29 @@ async def whatif(
     body: WhatIfRequest,
     x_session_id: Optional[str] = Header(default=None),
 ):
-    if not x_session_id or x_session_id not in session_cache:
-        raise HTTPException(
-            status_code=400,
-            detail="No dataset in cache. Run /analyze first to upload a CSV."
-        )
+    with session_lock:
+        if not x_session_id or x_session_id not in session_cache:
+            raise HTTPException(
+                status_code=400,
+                detail="No dataset in cache. Run /analyze first to upload a CSV."
+            )
 
-    session = session_cache[x_session_id]
+        session = session_cache[x_session_id]
+
     df = session["df"]
     target_col = session["target_col"]
     sensitive_col = session["sensitive_col"]
+    X_train_cached = session.get("X_train")
+    X_test_cached = session.get("X_test")
+    y_train_cached = session.get("y_train")
+    y_test_cached = session.get("y_test")
+    original_eod_cached = session.get("original_eod")
+
+    if any(v is None for v in [X_train_cached, X_test_cached, y_train_cached, y_test_cached]):
+        raise HTTPException(
+            status_code=400,
+            detail="No cached train/test split found. Run /analyze first to upload a CSV."
+        )
 
     all_features = [c for c in df.columns if c != target_col]
     invalid = [f for f in body.drop_features if f not in all_features]
@@ -148,18 +207,24 @@ async def whatif(
 
     # ── Original metrics ───────────────────────────────────────────────────────
     original_stats = analyze_bias(df, target_col, sensitive_col)
-    _, X_train_orig, X_test_orig, y_test_orig, _, y_pred_orig, _, sensitive_test_orig = train_and_evaluate(
-        df, target_col, sensitive_col
-    )
-    eod_orig = compute_eod(y_test_orig, y_pred_orig, sensitive_test_orig)
-    original_stats["eod"] = eod_orig["eod"]
+    original_stats["eod"] = float(original_eod_cached) if original_eod_cached is not None else 0.0
 
     # ── Modified: retrain on reduced feature set ───────────────────────────────
     df_modified = df.drop(columns=body.drop_features, errors="ignore")
 
-    model_mod, X_train_mod, X_test_mod, y_test_mod, _, y_pred_mod, _, sensitive_test_mod = train_and_evaluate(
-        df_modified, target_col, sensitive_col
+    X_train_mod = X_train_cached.drop(columns=body.drop_features, errors="ignore")
+    X_test_mod = X_test_cached.drop(columns=body.drop_features, errors="ignore")
+
+    model_mod = RandomForestClassifier(
+        n_estimators=100,
+        max_depth=8,
+        random_state=42,
+        n_jobs=-1
     )
+    model_mod.fit(X_train_mod, y_train_cached)
+
+    y_pred_mod = model_mod.predict(X_test_mod)
+    sensitive_test_mod = df.loc[y_test_cached.index, sensitive_col].astype(str).reset_index(drop=True)
 
     pred_df = pd.DataFrame({
         sensitive_col: sensitive_test_mod.values,
@@ -167,7 +232,7 @@ async def whatif(
     })
     modified_stats = analyze_bias(pred_df, target_col, sensitive_col)
 
-    eod_mod = compute_eod(y_test_mod, y_pred_mod, sensitive_test_mod)
+    eod_mod = compute_eod(y_test_cached, y_pred_mod, sensitive_test_mod)
     modified_stats["eod"] = eod_mod["eod"]
 
     shap_modified = get_shap_values(model_mod, X_train_mod, X_test_mod)

@@ -58,14 +58,26 @@ def get_group_stats(df, target_col, sensitive_col):
 
 
 def calculate_spd(group_stats):
-    rates = [v["positive_rate"] for v in group_stats.values()]
+    rates = [
+        v.get("positive_rate")
+        for v in group_stats.values()
+        if v.get("positive_rate") is not None and pd.notna(v.get("positive_rate"))
+    ]
+    if not rates:
+        return 0.0
     return round(max(rates) - min(rates), 4)
 
 
 def calculate_di(group_stats):
-    rates = [v["positive_rate"] for v in group_stats.values()]
+    rates = [
+        v.get("positive_rate")
+        for v in group_stats.values()
+        if v.get("positive_rate") is not None and pd.notna(v.get("positive_rate"))
+    ]
+    if not rates:
+        return 0.0
     max_rate = max(rates)
-    return round(min(rates) / max_rate, 4) if max_rate > 0 else 1.0
+    return round(min(rates) / max_rate, 4) if max_rate > 0 else 0.0
 
 
 def get_severity(spd, di):
@@ -195,8 +207,19 @@ def compute_eod(y_test, y_pred, sensitive_test):
     if len(group_metrics) < 2:
         return {"eod": 0.0, "group_metrics": group_metrics, "bias_detected": False}
 
-    tprs = [v["tpr"] for v in group_metrics.values()]
-    fprs = [v["fpr"] for v in group_metrics.values()]
+    tprs = [
+        v.get("tpr")
+        for v in group_metrics.values()
+        if v.get("tpr") is not None and pd.notna(v.get("tpr"))
+    ]
+    fprs = [
+        v.get("fpr")
+        for v in group_metrics.values()
+        if v.get("fpr") is not None and pd.notna(v.get("fpr"))
+    ]
+
+    if not tprs or not fprs:
+        return {"eod": 0.0, "group_metrics": group_metrics, "bias_detected": False}
 
     tpr_diff = round(max(tprs) - min(tprs), 4)
     fpr_diff = round(max(fprs) - min(fprs), 4)

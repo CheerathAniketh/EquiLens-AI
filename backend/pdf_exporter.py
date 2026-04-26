@@ -143,6 +143,14 @@ def generate_audit_pdf(report_data: dict) -> bytes:
       remediation_steps: [str]                   (optional)
     """
     buf = io.BytesIO()
+    report_data = report_data if isinstance(report_data, dict) else {}
+
+    def _to_float(value, default=0.0):
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return default
+
     doc = SimpleDocTemplate(
         buf, pagesize=A4,
         leftMargin=15*mm, rightMargin=15*mm,
@@ -157,9 +165,9 @@ def generate_audit_pdf(report_data: dict) -> bytes:
          [Paragraph("Algorithmic Bias Audit Report", S["Subtitle"])],
          [Spacer(1, 4*mm)],
          [Paragraph(
-             f"Dataset: <b>{report_data.get('dataset', 'Unknown')}</b>  &nbsp;|&nbsp;  "
-             f"Target: <b>{report_data.get('target_col', '—')}</b>  &nbsp;|&nbsp;  "
-             f"Sensitive: <b>{report_data.get('sensitive_col', '—')}</b>",
+             f"Dataset: <b>{report_data.get('dataset', 'N/A')}</b>  &nbsp;|&nbsp;  "
+             f"Target: <b>{report_data.get('target_col', 'N/A')}</b>  &nbsp;|&nbsp;  "
+             f"Sensitive: <b>{report_data.get('sensitive_col', 'N/A')}</b>",
              ParagraphStyle("covermeta", fontSize=9, textColor=WHITE,
                             fontName="Helvetica", leading=13),
          )],
@@ -185,7 +193,7 @@ def generate_audit_pdf(report_data: dict) -> bytes:
 
     # ── VERDICT BANNER ───────────────────────────────────────────────────────
     bias_detected = report_data.get("bias_detected", False)
-    severity      = report_data.get("severity", "Low")
+    severity      = report_data.get("severity", "N/A")
     verdict_color = RED if bias_detected else GREEN
     verdict_text  = (
         "BIAS DETECTED — Immediate action recommended."
@@ -213,9 +221,9 @@ def generate_audit_pdf(report_data: dict) -> bytes:
     story.append(HRFlowable(width="100%", thickness=0.5,
                              color=TEAL_LIGHT, spaceAfter=4))
 
-    di  = report_data.get("di",  None)
-    spd = report_data.get("spd", None)
-    eod = report_data.get("eod", None)
+    di  = _to_float(report_data.get("di", 0), 0.0)
+    spd = _to_float(report_data.get("spd", 0), 0.0)
+    eod = _to_float(report_data.get("eod", 0), 0.0)
 
     def _metric_cell(name, value, threshold_note, ok):
         bg = GRAY_LIGHT
@@ -250,13 +258,13 @@ def generate_audit_pdf(report_data: dict) -> bytes:
         [[
             _metric_cell("Disparate Impact", di,
                          "Threshold: >= 0.80  (EEOC 4/5ths rule)",
-                         di is not None and di >= 0.8),
+                         di >= 0.8),
             _metric_cell("Stat. Parity Diff.", spd,
                          "Threshold: <= 0.10",
-                         spd is not None and abs(spd) <= 0.1),
+                         abs(spd) <= 0.1),
             _metric_cell("Equalized Odds", eod,
                          "Threshold: <= 0.10",
-                         eod is not None and abs(eod) <= 0.1),
+                         abs(eod) <= 0.1),
         ]],
         colWidths=[57*mm, 57*mm, 57*mm],
         hAlign="LEFT",
@@ -270,7 +278,10 @@ def generate_audit_pdf(report_data: dict) -> bytes:
     story.append(Spacer(1, 5*mm))
 
     # ── GROUP APPROVAL RATES ─────────────────────────────────────────────────
-    group_stats = report_data.get("group_stats", {})
+    group_stats = report_data.get("group_stats", {}) or {}
+    if not isinstance(group_stats, dict):
+        group_stats = {}
+
     if group_stats:
         story.append(Paragraph("Group Approval Rates", S["H2"]))
         story.append(HRFlowable(width="100%", thickness=0.5,
@@ -278,10 +289,11 @@ def generate_audit_pdf(report_data: dict) -> bytes:
 
         tdata = [["Group", "Count", "Approval Rate"]]
         for gname, gvals in group_stats.items():
-            rate = gvals.get("positive_rate", 0)
+            gvals = gvals if isinstance(gvals, dict) else {}
+            rate = _to_float(gvals.get("positive_rate", 0), 0.0)
             tdata.append([
                 str(gname),
-                str(gvals.get("count", "—")),
+                str(gvals.get("count", 0)),
                 f"{rate * 100:.1f}%",
             ])
 
@@ -302,19 +314,32 @@ def generate_audit_pdf(report_data: dict) -> bytes:
         story.append(Spacer(1, 5*mm))
 
     # ── SHAP FEATURE IMPORTANCE ───────────────────────────────────────────────
-    shap = report_data.get("shap_features", [])
+    shap = report_data.get("shap_features", []) or []
+    if not isinstance(shap, list):
+        shap = []
+
     if shap:
         story.append(Paragraph("Top Contributing Features (SHAP)", S["H2"]))
         story.append(HRFlowable(width="100%", thickness=0.5,
                                  color=TEAL_LIGHT, spaceAfter=4))
 
         sdata = [["Feature", "Importance", "Bar"]]
-        max_imp = max((f.get("importance", 0) for f in shap), default=1) or 1
+        max_imp = max(
+            (
+                _to_float(f.get("importance", 0), 0.0)
+                for f in shap
+                if isinstance(f, dict)
+            ),
+            default=1,
+        ) or 1
         for feat in shap[:10]:
-            imp  = feat.get("importance", 0)
+            if not isinstance(feat, dict):
+                continue
+
+            imp  = _to_float(feat.get("importance", 0), 0.0)
             bar_w = int((imp / max_imp) * 40)
             sdata.append([
-                feat.get("feature", "—"),
+                str(feat.get("feature", "N/A")),
                 f"{imp:.4f}",
                 Paragraph(
                     "&#9608;" * bar_w,
@@ -340,8 +365,8 @@ def generate_audit_pdf(report_data: dict) -> bytes:
         story.append(Spacer(1, 5*mm))
 
     # ── AI EXPLANATION ────────────────────────────────────────────────────────
-    explanation = report_data.get("explanation", "")
-    if explanation:
+    explanation = report_data.get("explanation", "N/A")
+    if explanation and explanation != "N/A":
         story.append(Paragraph("AI Explanation (Gemini)", S["H2"]))
         story.append(HRFlowable(width="100%", thickness=0.5,
                                  color=TEAL_LIGHT, spaceAfter=4))
@@ -363,22 +388,32 @@ def generate_audit_pdf(report_data: dict) -> bytes:
         story.append(Spacer(1, 5*mm))
 
     # ── WHAT-IF RESULTS (if present) ─────────────────────────────────────────
-    whatif = report_data.get("whatif")
+    whatif = report_data.get("whatif", {}) or {}
+    if not isinstance(whatif, dict):
+        whatif = {}
+
     if whatif:
         story.append(PageBreak())
         story.append(Paragraph("What-If Simulation Results", S["H2"]))
         story.append(HRFlowable(width="100%", thickness=0.5,
                                  color=TEAL_LIGHT, spaceAfter=4))
 
-        dropped = whatif.get("dropped_features", [])
+        dropped = whatif.get("dropped_features", []) or []
+        if not isinstance(dropped, list):
+            dropped = []
+
         story.append(Paragraph(
             f"Features dropped: <b>{', '.join(dropped) if dropped else 'None'}</b>",
             S["Body"],
         ))
         story.append(Spacer(1, 3*mm))
 
-        orig = whatif.get("original", {})
-        sim  = whatif.get("simulated", {})
+        orig = whatif.get("original", {}) or {}
+        sim  = whatif.get("simulated", {}) or {}
+        if not isinstance(orig, dict):
+            orig = {}
+        if not isinstance(sim, dict):
+            sim = {}
 
         wi_data = [["Metric", "Before", "After", "Change"]]
         for metric, label, fmt in [
@@ -389,6 +424,8 @@ def generate_audit_pdf(report_data: dict) -> bytes:
             ov = orig.get(metric)
             sv = sim.get(metric)
             if ov is not None and sv is not None:
+                ov = _to_float(ov, 0.0)
+                sv = _to_float(sv, 0.0)
                 delta = sv - ov
                 sign  = "+" if delta > 0 else ""
                 wi_data.append([label, fmt(ov), fmt(sv),
@@ -411,14 +448,17 @@ def generate_audit_pdf(report_data: dict) -> bytes:
         story.append(Spacer(1, 5*mm))
 
     # ── REMEDIATION STEPS ─────────────────────────────────────────────────────
-    steps = report_data.get("remediation_steps", [])
+    steps = report_data.get("remediation_steps", []) or []
+    if not isinstance(steps, list):
+        steps = []
+
     if steps:
         story.append(Paragraph("Recommended Remediation Steps", S["H2"]))
         story.append(HRFlowable(width="100%", thickness=0.5,
                                  color=TEAL_LIGHT, spaceAfter=4))
         for i, step in enumerate(steps, 1):
             story.append(Paragraph(
-                f"{i}.&nbsp;&nbsp;{step}",
+                f"{i}.&nbsp;&nbsp;{str(step)}",
                 ParagraphStyle("step", parent=S["Body"],
                                leftIndent=8, spaceAfter=4),
             ))
@@ -431,11 +471,11 @@ def generate_audit_pdf(report_data: dict) -> bytes:
     reg_data = [
         ["Regulation", "Metric", "Threshold", "Status"],
         ["EEOC 4/5ths Rule", "Disparate Impact", ">= 0.80",
-         "PASS" if (di is not None and di >= 0.8) else "FAIL"],
+            "PASS" if di >= 0.8 else "FAIL"],
         ["EU AI Act", "Stat. Parity Diff.", "<= 0.10",
-         "PASS" if (spd is not None and abs(spd) <= 0.1) else "FAIL"],
+            "PASS" if abs(spd) <= 0.1 else "FAIL"],
         ["General Fairness", "Equalized Odds", "<= 0.10",
-         "PASS" if (eod is not None and abs(eod) <= 0.1) else "FAIL"],
+            "PASS" if abs(eod) <= 0.1 else "FAIL"],
     ]
     reg_table = Table(reg_data, colWidths=[60*mm, 45*mm, 35*mm, 30*mm])
     reg_table.setStyle(TableStyle([

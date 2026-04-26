@@ -12,7 +12,7 @@ PROXY_KEYWORDS = [
 def get_shap_values(model, X_train, X_test):
     explainer = shap.TreeExplainer(model)
 
-    X_sample = X_test.sample(min(500, len(X_test)), random_state=42)
+    X_sample = X_test.iloc[:min(100, len(X_test))]
     shap_values = explainer.shap_values(X_sample)
 
     if isinstance(shap_values, list):

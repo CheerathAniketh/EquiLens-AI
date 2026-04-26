@@ -1,12 +1,15 @@
 import json
 import os
 import re
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
 from dotenv import load_dotenv
 from google import genai
 
 load_dotenv()
 
 client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
+GEMINI_TIMEOUT_SECONDS = 15
+GEMINI_EXECUTOR = ThreadPoolExecutor(max_workers=4)
 
 PERSONAS = {
     "student":  "a student learning about AI fairness for the first time",
@@ -21,8 +24,22 @@ def _is_api_error(e: Exception) -> bool:
     return any(code in err for code in [
         "429", "RESOURCE_EXHAUSTED",
         "400", "INVALID_ARGUMENT",
-        "API_KEY_INVALID", "API Key not found"
+        "API_KEY_INVALID", "API Key not found",
+        "GEMINI_TIMEOUT", "TIMEOUT", "timed out"
     ])
+
+
+def _generate_content_with_timeout(prompt: str, timeout_seconds: int = GEMINI_TIMEOUT_SECONDS):
+    future = GEMINI_EXECUTOR.submit(
+        client.models.generate_content,
+        model="gemini-2.5-flash",
+        contents=prompt,
+    )
+    try:
+        return future.result(timeout=timeout_seconds)
+    except FuturesTimeoutError as exc:
+        future.cancel()
+        raise TimeoutError("GEMINI_TIMEOUT") from exc
 
 
 def _fallback_explanation(bias_report) -> str:
@@ -107,10 +124,7 @@ Rules:
 """
 
     try:
-        response = client.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=prompt
-        )
+        response = _generate_content_with_timeout(prompt)
         return response.text
     except Exception as e:
         if _is_api_error(e):
@@ -129,10 +143,7 @@ Example format: ["fix 1", "fix 2", "fix 3"]
 """
 
     try:
-        response = client.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=prompt
-        )
+        response = _generate_content_with_timeout(prompt)
         try:
             return _parse_json(response.text)
         except (ValueError, json.JSONDecodeError):
@@ -190,10 +201,7 @@ Hard limit: under 50 words total. No filler, no intros.
 """
 
     try:
-        response = client.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=prompt
-        )
+        response = _generate_content_with_timeout(prompt)
         return response.text
     except Exception as e:
         if _is_api_error(e):

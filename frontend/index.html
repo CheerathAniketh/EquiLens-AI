@@ -149,6 +149,17 @@ body::before { content: ''; position: fixed; inset: 0; background-image: linear-
 .pill-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
 .upload-bar { display: flex; align-items: center; gap: 16px; padding: 14px 32px; background: var(--surface2); border-bottom: 1px solid var(--border); flex-wrap: wrap; }
 .upload-label { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+.error-bar {
+  display: none;
+  margin: 10px 32px 0;
+  padding: 9px 12px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 77, 109, 0.35);
+  background: rgba(255, 77, 109, 0.08);
+  color: #ff9ab0;
+  font-family: var(--mono);
+  font-size: 11px;
+}
 .upload-btn { display: flex; align-items: center; gap: 8px; padding: 7px 16px; border-radius: 6px; border: 1px dashed var(--border2); background: transparent; color: var(--muted); cursor: pointer; font-family: var(--mono); font-size: 11px; transition: all 0.15s; }
 .upload-btn:hover { border-color: var(--accent); color: var(--accent); }
 .upload-btn.has-file { border-style: solid; border-color: var(--success); color: var(--success); }
@@ -386,6 +397,7 @@ body::before { content: ''; position: fixed; inset: 0; background-image: linear-
     </button>
     <button class="export-btn" onclick="nav('report', null)">Export report</button>
   </div>
+  <div id="errorBanner" class="error-bar" role="alert" aria-live="polite"></div>
 
   <!-- OVERVIEW -->
   <div class="page active" id="page-overview">
@@ -608,6 +620,42 @@ let state = {
   analysisResult: null, charts: {}
 };
 
+let errorHideTimer = null;
+
+const runBtnDefaultHtml = document.getElementById('runBtn')
+  ? document.getElementById('runBtn').innerHTML
+  : 'Analyze';
+
+function setAnalyzeLoading(isLoading) {
+  const btn = document.getElementById('runBtn');
+  if (!btn) return;
+  if (isLoading) {
+    btn.disabled = true;
+    btn.classList.add('running');
+    btn.innerHTML = '<span class="spinner"></span> Analyzing...';
+  } else {
+    btn.disabled = false;
+    btn.classList.remove('running');
+    btn.innerHTML = runBtnDefaultHtml;
+  }
+}
+
+function showError(message) {
+  const errorBanner = document.getElementById('errorBanner');
+  if (!errorBanner) return;
+
+  errorBanner.textContent = message || 'Something went wrong. Please try again.';
+  errorBanner.style.display = 'block';
+
+  if (errorHideTimer) {
+    clearTimeout(errorHideTimer);
+  }
+  errorHideTimer = setTimeout(() => {
+    errorBanner.style.display = 'none';
+    errorBanner.textContent = '';
+  }, 5000);
+}
+
 // ── DEMO DATA ──
 const DEMO = {
   hiring: {
@@ -697,8 +745,22 @@ function onFileSelected(input) {
     state.file = input.files[0];
     document.getElementById('uploadLabel').textContent = input.files[0].name;
     document.getElementById('uploadBtn').classList.add('has-file');
+    clearResultsForNewUpload();
     detectColumns(input.files[0]);
   }
+}
+
+function clearResultsForNewUpload() {
+  Object.values(state.charts).forEach(chart => {
+    if (chart && typeof chart.destroy === 'function') {
+      chart.destroy();
+    }
+  });
+  state.charts = {};
+  state.analysisResult = null;
+
+  document.getElementById('resultsState').style.display = 'none';
+  document.getElementById('emptyState').style.display = 'flex';
 }
 
 async function detectColumns(file) {
@@ -730,10 +792,7 @@ async function runAnalysis() {
   if (!targetCol) { alert('Please select a target column.'); return; }
   if (!sensitiveCol) { alert('Please select a sensitive attribute column.'); return; }
 
-  const btn = document.getElementById('runBtn');
-  btn.disabled = true;
-  btn.classList.add('running');
-  btn.innerHTML = '<span class="spinner"></span> Analyzing...';
+  setAnalyzeLoading(true);
 
   try {
     const formData = new FormData();
@@ -753,12 +812,10 @@ async function runAnalysis() {
     showResults();
     loadWhatifFeatures();
   } catch (err) {
-    alert('Could not connect to EquiLens backend.\n\nLoading demo data instead.');
+    showError('Could not connect to EquiLens backend. Loading demo data instead.');
     switchDomain(state.domain, document.querySelector('.pill-btn.active'));
   } finally {
-    btn.disabled = false;
-    btn.classList.remove('running');
-    btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><polygon points="4,2 14,8 4,14"/></svg> Analyze';
+    setAnalyzeLoading(false);
   }
 }
 
@@ -1081,11 +1138,15 @@ async function runWhatif() {
       headers: { 'Content-Type': 'application/json', ...getHeaders() },
       body: JSON.stringify({ drop_features: selected, audience: state.audience })
     });
-    if (!res.ok) { const err = await res.json(); alert(err.detail || 'Simulation failed'); return; }
+    if (!res.ok) {
+      const err = await res.json();
+      showError(err.detail || 'Simulation failed');
+      return;
+    }
     const data = await res.json();
     renderWiResults(data);
   } catch(e) {
-    alert('Could not reach backend. Make sure /analyze has been run first.');
+    showError('Could not reach backend. Make sure /analyze has been run first.');
   } finally {
     btn.disabled = false;
     btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 4h14M1 8h10M1 12h6"/></svg> Simulate';
