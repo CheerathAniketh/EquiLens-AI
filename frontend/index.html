@@ -28,6 +28,103 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 14px; line-height: 1.6; min-height: 100vh; overflow-x: hidden; }
 body::before { content: ''; position: fixed; inset: 0; background-image: linear-gradient(rgba(108,99,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(108,99,255,0.03) 1px, transparent 1px); background-size: 40px 40px; pointer-events: none; z-index: 0; }
+
+/* ── LANDING OVERLAY ── */
+#landing {
+  position: fixed; inset: 0; z-index: 200;
+  background: #080810;
+  display: flex; align-items: center; justify-content: center;
+}
+#landing::before {
+  content: '';
+  position: absolute; inset: 0;
+  background-image: linear-gradient(rgba(108,99,255,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(108,99,255,0.04) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+}
+#landing::after {
+  content: '';
+  position: absolute;
+  width: 600px; height: 600px;
+  background: radial-gradient(circle, rgba(108,99,255,0.08) 0%, transparent 70%);
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+.lnd-inner {
+  position: relative; z-index: 1;
+  text-align: center; max-width: 620px; padding: 2rem;
+  animation: lndIn 0.6s cubic-bezier(0.16,1,0.3,1) both;
+}
+@keyframes lndIn { from { opacity:0; transform:translateY(24px); } to { opacity:1; transform:translateY(0); } }
+.lnd-logo {
+  font-family: var(--sans); font-size: 1rem; font-weight: 800; letter-spacing: -0.02em;
+  background: linear-gradient(135deg, #6c63ff 0%, #00e5b0 100%);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  margin-bottom: 2.5rem;
+}
+.lnd-badge {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-family: var(--mono); font-size: 11px;
+  color: var(--accent2); border: 1px solid rgba(0,229,176,0.2);
+  background: rgba(0,229,176,0.05); border-radius: 20px;
+  padding: 5px 14px; margin-bottom: 1.8rem; letter-spacing: 0.06em;
+}
+.lnd-badge-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent2); animation: glow 2s ease-in-out infinite; }
+.lnd-h1 {
+  font-size: 3.4rem; font-weight: 800; line-height: 1.05;
+  letter-spacing: -0.05em; margin-bottom: 1.2rem;
+  background: linear-gradient(135deg, #e2e2f0 0%, #b0aaff 50%, #00e5b0 100%);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+}
+.lnd-sub {
+  font-size: 0.95rem; color: var(--muted); line-height: 1.8;
+  max-width: 460px; margin: 0 auto 2rem;
+  font-family: var(--mono);
+}
+.lnd-stats {
+  display: flex; gap: 10px; justify-content: center; margin-bottom: 2rem; flex-wrap: wrap;
+}
+
+.lnd-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-bottom: 2rem; }
+.lnd-btn-primary {
+  display: flex; align-items: center; gap: 10px;
+  padding: 14px 30px; border-radius: 8px; border: none;
+  background: var(--accent); color: #fff; cursor: pointer;
+  font-family: var(--sans); font-size: 14px; font-weight: 600;
+  transition: all 0.2s; position: relative; overflow: hidden;
+}
+.lnd-btn-primary::before {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.1), transparent);
+  opacity: 0; transition: opacity 0.2s;
+}
+.lnd-btn-primary:hover { background: #7c74ff; transform: translateY(-2px); box-shadow: 0 8px 24px rgba(108,99,255,0.35); }
+.lnd-btn-primary:hover::before { opacity: 1; }
+.lnd-btn-secondary {
+  display: flex; align-items: center; gap: 10px;
+  padding: 14px 30px; border-radius: 8px;
+  border: 1px solid var(--border2); background: transparent;
+  color: var(--text); cursor: pointer;
+  font-family: var(--sans); font-size: 14px; font-weight: 600;
+  transition: all 0.2s;
+}
+.lnd-btn-secondary:hover { border-color: rgba(108,99,255,0.5); background: rgba(108,99,255,0.06); transform: translateY(-2px); }
+.lnd-chips { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+.lnd-chip {
+  font-family: var(--mono); font-size: 10px; color: var(--muted);
+  padding: 4px 12px; border: 1px solid var(--border); border-radius: 20px;
+  letter-spacing: 0.05em;
+}
+.lnd-divider {
+  font-family: var(--mono); font-size: 10px; color: var(--muted);
+  opacity: 0.4; margin-bottom: 1rem; letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+@keyframes landingOut { to { opacity:0; transform: scale(0.97); pointer-events:none; } }
+.landing-hide { animation: landingOut 0.3s ease forwards; }
+
+/* ── APP SHELL ── */
 .app { display: grid; grid-template-columns: 240px 1fr; min-height: 100vh; position: relative; z-index: 1; }
 .sidebar { background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh; overflow: hidden; }
 .logo-area { padding: 28px 24px 24px; border-bottom: 1px solid var(--border); }
@@ -137,7 +234,6 @@ body::before { content: ''; position: fixed; inset: 0; background-image: linear-
 .step-body { flex: 1; }
 .step-title { font-weight: 600; font-size: 13px; margin-bottom: 5px; }
 .step-desc { font-size: 12px; color: var(--muted); line-height: 1.6; }
-.step-impact { display: inline-block; margin-top: 7px; font-family: var(--mono); font-size: 11px; color: var(--accent2); }
 .reg-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
 .reg-pill { padding: 4px 12px; border-radius: 20px; font-size: 10px; font-family: var(--mono); border: 1px solid; }
 .reg-pass { background: rgba(64,217,139,0.07); color: var(--success); border-color: rgba(64,217,139,0.25); }
@@ -150,12 +246,12 @@ body::before { content: ''; position: fixed; inset: 0; background-image: linear-
 .hero-upload { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 32px 48px; border-radius: 16px; border: 2px dashed var(--border2); background: var(--surface); cursor: pointer; transition: all 0.2s; margin-top: 8px; }
 .hero-upload:hover { border-color: var(--accent); background: rgba(108,99,255,0.05); }
 .hero-upload-text { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+.sample-link { display: inline-flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: 11px; color: var(--accent); text-decoration: none; padding: 6px 14px; border-radius: 6px; border: 1px solid rgba(108,99,255,0.3); background: rgba(108,99,255,0.06); transition: all 0.15s; }
+.sample-link:hover { background: rgba(108,99,255,0.12); border-color: var(--accent); }
 .spinner { display: inline-block; width: 13px; height: 13px; border: 2px solid rgba(108,99,255,0.3); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .report-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 18px; background: var(--surface2); border-radius: 8px; border: 1px solid var(--border); margin-bottom: 16px; font-size: 12px; }
 .report-meta-k { color: var(--muted); font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; }
-
-/* ── WHAT-IF STYLES ── */
 .wi-feature-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 20px; }
 .wi-check { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface2); cursor: pointer; transition: all 0.15s; user-select: none; }
 .wi-check:hover { border-color: var(--border2); background: var(--surface3); }
@@ -181,11 +277,47 @@ body::before { content: ''; position: fixed; inset: 0; background-image: linear-
 .wi-delta-change.better { color: var(--success); }
 .wi-delta-change.worse  { color: var(--danger); }
 .wi-empty { text-align: center; padding: 48px 32px; color: var(--muted); font-family: var(--mono); font-size: 12px; line-height: 2; border: 1px dashed var(--border); border-radius: 10px; }
-
 @media (max-width: 900px) { .app { grid-template-columns: 1fr; } .sidebar { display: none; } .two-col, .score-grid, .wi-delta-grid, .wi-feature-grid { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body>
+
+<!-- ══════════════════════════════════════════════
+     LANDING PAGE OVERLAY
+══════════════════════════════════════════════ -->
+<div id="landing">
+  <div class="lnd-inner">
+    <div class="lnd-logo">EquiLens AI</div>
+    <div class="lnd-badge"><div class="lnd-badge-dot"></div>Open source · MIT licensed</div>
+    <h1 class="lnd-h1">Detect bias.<br>Build fairer AI.</h1>
+    <p class="lnd-sub">Upload any CSV and EquiLens audits your ML model for hidden discrimination — SPD, Disparate Impact, and Equalized Odds, explained in plain language. No data science degree required.</p>
+
+    <div class="lnd-actions">
+      <button class="lnd-btn-primary" onclick="landingUpload()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        Upload your dataset
+      </button>
+      <button class="lnd-btn-secondary" onclick="landingDemo()">
+        <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><polygon points="4,2 14,8 4,14"/></svg>
+        Use demo data
+      </button>
+    </div>
+
+    <div class="lnd-divider">What's included</div>
+    <div class="lnd-chips">
+      <span class="lnd-chip">SHAP explainability</span>
+      <span class="lnd-chip">Intersectionality heatmap</span>
+      <span class="lnd-chip">What-if simulator</span>
+      <span class="lnd-chip">Gemini plain-language</span>
+      <span class="lnd-chip">PDF audit report</span>
+      <span class="lnd-chip">FastAPI backend</span>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     MAIN APP
+══════════════════════════════════════════════ -->
 <div class="app">
 <aside class="sidebar">
   <div class="logo-area">
@@ -222,7 +354,7 @@ body::before { content: ''; position: fixed; inset: 0; background-image: linear-
     <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 2h7l3 3v9H3z"/><line x1="6" y1="7" x2="10" y2="7"/><line x1="6" y1="10" x2="10" y2="10"/></svg>
     Audit report
   </div>
-  <div class="sidebar-bottom">v1.0.0 · SDG 10 · GDG Solution Challenge 2026</div>
+  <div class="sidebar-bottom">v1.0.0 · EquiLens AI · Open Source</div>
 </aside>
 
 <main class="main">
@@ -269,7 +401,11 @@ body::before { content: ''; position: fixed; inset: 0; background-image: linear-
           <div class="hero-upload-text">Click to upload CSV — or drag and drop</div>
           <div style="font-size:11px;color:var(--muted);font-family:var(--mono);">hiring_sample.csv, loan_data.csv, admissions.csv...</div>
         </div>
-        <div style="font-family:var(--mono);font-size:11px;color:var(--muted);opacity:0.6;margin-top:8px;">Real bias found: Amazon hiring AI, COMPAS recidivism, Healthcare cost algorithm</div>
+        <a href="/sample_data/adult_processed.csv" download class="sample-link">
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 1v10M4 11l4 4 4-4"/><path d="M1 14v1h14v-1"/></svg>
+          Download sample dataset (adult_processed.csv)
+        </a>
+        <div style="font-family:var(--mono);font-size:11px;color:var(--muted);opacity:0.6;">Real bias found: Amazon hiring AI, COMPAS recidivism, Healthcare cost algorithm</div>
       </div>
       <div id="resultsState" style="display:none;">
         <div class="score-grid" id="scoreGrid"></div>
@@ -387,10 +523,8 @@ body::before { content: ''; position: fixed; inset: 0; background-image: linear-
           </div>
         </div>
       </div>
-
       <div id="wiResults" style="display:none;">
         <div class="wi-delta-grid" id="wiDeltaGrid"></div>
-
         <div class="two-col" style="margin-bottom:18px;">
           <div class="panel">
             <div class="panel-hd">Before <span class="badge badge-red">original</span></div>
@@ -401,12 +535,10 @@ body::before { content: ''; position: fixed; inset: 0; background-image: linear-
             <div class="chart-wrap"><canvas id="wiAfterChart"></canvas></div>
           </div>
         </div>
-
         <div class="panel full" style="margin-bottom:18px;">
           <div class="panel-hd">Remaining features <span class="badge badge-teal" id="wiRemainingBadge"></span></div>
           <div id="wiRemainingList" style="font-family:var(--mono);font-size:12px;color:var(--muted);line-height:2.2;"></div>
         </div>
-
         <div class="panel full">
           <div class="panel-hd">AI impact analysis <span class="badge badge-purple">Gemini</span></div>
           <div class="ai-box">
@@ -452,7 +584,7 @@ body::before { content: ''; position: fixed; inset: 0; background-image: linear-
         <div style="display:flex;gap:10px;margin-top:20px;">
           <button class="run-btn" id="pdfBtn" onclick="exportPDF()">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                Download PDF
+            Download PDF
           </button>
           <button class="export-btn" onclick="copyReport()">Copy to clipboard</button>
         </div>
@@ -464,6 +596,11 @@ body::before { content: ''; position: fixed; inset: 0; background-image: linear-
 
 <script>
 const API_BASE = '';
+
+// ── Session management ──
+let sessionId = localStorage.getItem('equilens_session') || null;
+function getHeaders() { const h = {}; if (sessionId) h['X-Session-Id'] = sessionId; return h; }
+function saveSession(id) { sessionId = id; localStorage.setItem('equilens_session', id); }
 
 let state = {
   file: null, targetCol: '', sensitiveCol: '',
@@ -485,7 +622,6 @@ const DEMO = {
     ], proxy_features: ['employment_gap', 'university_prestige'] },
     explanation: "This hiring dataset shows serious bias against female applicants. Women are approved at 44% compared to 72% for men — a gap of 28 percentage points. The Disparate Impact Ratio of 0.61 falls well below the legal threshold of 0.80.\n\nEqually qualified female candidates are systematically passed over because historical data encoded past biases into the model.\n\nTo fix this: remove employment_gap as a feature — it penalizes people who took parental leave. Second, retrain on a balanced dataset with equal positive outcome rates across gender groups.",
     fixes: ["Remove 'employment_gap' feature — it acts as a proxy for parental leave, penalizing women.", "Retrain on rebalanced data with equal positive outcome rates across gender groups.", "Apply post-processing threshold calibration to equalize false positive rates."],
-    regulations: [{ name: 'EEOC 80% rule', status: 'fail' }, { name: 'EU AI Act Art. 10', status: 'fail' }, { name: 'GDPR Art. 22', status: 'warn' }],
     curves: null
   },
   credit: {
@@ -498,9 +634,8 @@ const DEMO = {
       { feature: 'employment_type', importance: 0.19 },
       { feature: 'years_at_address', importance: 0.16 },
     ], proxy_features: ['zip_code_score', 'years_at_address'] },
-    explanation: "This credit dataset shows significant racial bias. Black applicants are approved at 42% compared to 71% for White applicants. The zip code score feature is the primary culprit — it's a proxy for historically redlined neighborhoods.\n\nQualified Black borrowers are systematically denied loans not because of creditworthiness, but because of where they live.\n\nFix: Replace zip code score with individual-level financial metrics, and apply adversarial debiasing during model training.",
-    fixes: ["Replace zip_code_score with individual financial behavior metrics.", "Apply adversarial debiasing to remove race-correlated features.", "Implement human review for borderline cases with protected attributes redacted."],
-    regulations: [{ name: 'ECOA / Reg B', status: 'fail' }, { name: 'Fair Housing Act', status: 'fail' }, { name: 'EU AI Act Art. 5', status: 'fail' }],
+    explanation: "This credit dataset shows significant racial bias. Black applicants are approved at 42% compared to 71% for White applicants. The zip code score feature is the primary culprit — it's a proxy for historically redlined neighbourhoods.\n\nQualified Black borrowers are systematically denied loans not because of creditworthiness, but because of where they live.\n\nFix: Replace zip code score with individual-level financial metrics, and apply adversarial debiasing during model training.",
+    fixes: ["Replace zip_code_score with individual financial behaviour metrics.", "Apply adversarial debiasing to remove race-correlated features.", "Implement human review for borderline cases with protected attributes redacted."],
     curves: null
   },
   healthcare: {
@@ -513,12 +648,28 @@ const DEMO = {
       { feature: 'bmi_deviation', importance: 0.19 },
       { feature: 'specialist_access', importance: 0.17 },
     ], proxy_features: ['cost_history', 'insurance_tier', 'bmi_deviation'] },
-    explanation: "The healthcare triage dataset shows systematic bias against female patients. Women are prioritized at 63% compared to 78% for men. The cost_history feature is the main driver — lower-income patients historically spend less on healthcare due to access barriers, not lower health needs.\n\nSicker patients from disadvantaged groups are assigned lower triage priority, potentially leading to worse outcomes.\n\nFix: Replace cost_history with acuity-normalized need scores, and recalibrate BMI thresholds derived from male-dominated datasets.",
+    explanation: "The healthcare triage dataset shows systematic bias against female patients. Women are prioritised at 63% compared to 78% for men. The cost_history feature is the main driver — lower-income patients historically spend less on healthcare due to access barriers, not lower health needs.\n\nSicker patients from disadvantaged groups are assigned lower triage priority, potentially leading to worse outcomes.\n\nFix: Replace cost_history with acuity-normalised need scores, and recalibrate BMI thresholds derived from male-dominated datasets.",
     fixes: ["Replace cost_history with need-based acuity scoring from clinical indicators only.", "Recalibrate BMI thresholds by gender to correct systematic underdiagnosis in women.", "Remove insurance_tier from triage model — route to billing only after clinical decisions."],
-    regulations: [{ name: 'Section 1557 ACA', status: 'fail' }, { name: 'EU AI Act Annex III', status: 'fail' }, { name: 'HIPAA non-discrim.', status: 'warn' }],
     curves: null
   }
 };
+
+// ── LANDING PAGE ──
+function dismissLanding() {
+  const el = document.getElementById('landing');
+  el.classList.add('landing-hide');
+  setTimeout(() => { if (el.parentNode) el.parentNode.removeChild(el); }, 320);
+}
+
+function landingDemo() {
+  dismissLanding();
+  switchDomain('hiring', document.querySelector('.pill-btn.active'));
+}
+
+function landingUpload() {
+  dismissLanding();
+  document.getElementById('fileInput').click();
+}
 
 // ── NAV ──
 function nav(page, el) {
@@ -532,7 +683,7 @@ function nav(page, el) {
 function switchDomain(domain, el) {
   state.domain = domain;
   document.querySelectorAll('.pill-btn').forEach(b => b.classList.remove('active'));
-  el.classList.add('active');
+  if (el) el.classList.add('active');
   const d = DEMO[domain];
   document.getElementById('domainSlug').textContent = d.slug;
   state.analysisResult = { stats: d.stats, shap: d.shap, explanation: d.explanation, fixes: d.fixes, curves: d.curves };
@@ -558,10 +709,7 @@ async function detectColumns(file) {
   const sensitiveSel = document.getElementById('sensitiveSel');
   targetSel.innerHTML = '<option value="">Select column</option>';
   sensitiveSel.innerHTML = '<option value="">Select column</option>';
-  cols.forEach(col => {
-    targetSel.add(new Option(col, col));
-    sensitiveSel.add(new Option(col, col));
-  });
+  cols.forEach(col => { targetSel.add(new Option(col, col)); sensitiveSel.add(new Option(col, col)); });
   const targetGuess = cols.find(c => ['hired','approved','outcome','label','target','decision','income'].includes(c.toLowerCase()));
   const sensitiveGuess = cols.find(c => ['gender','race','age','sex','ethnicity','caste'].includes(c.toLowerCase()));
   if (targetGuess) targetSel.value = targetGuess;
@@ -577,10 +725,7 @@ async function detectColumns(file) {
 async function runAnalysis() {
   const targetCol = document.getElementById('targetSel').value;
   const sensitiveCol = document.getElementById('sensitiveSel').value;
-  if (!state.file && !targetCol) {
-    switchDomain(state.domain, document.querySelector('.pill-btn.active'));
-    return;
-  }
+  if (!state.file && !targetCol) { switchDomain(state.domain, document.querySelector('.pill-btn.active')); return; }
   if (!state.file) { alert('Please upload a CSV file first.'); return; }
   if (!targetCol) { alert('Please select a target column.'); return; }
   if (!sensitiveCol) { alert('Please select a sensitive attribute column.'); return; }
@@ -595,10 +740,11 @@ async function runAnalysis() {
     formData.append('file', state.file);
     const sensitiveCol2 = document.getElementById('sensitiveSel2').value;
     const res = await fetch(`${API_BASE}/analyze?target_col=${targetCol}&sensitive_col=${sensitiveCol}&sensitive_col_2=${sensitiveCol2}&audience=${state.audience}`, {
-      method: 'POST', body: formData
+      method: 'POST', headers: getHeaders(), body: formData
     });
     if (!res.ok) throw new Error('Analysis failed');
     const data = await res.json();
+    if (data.session_id) saveSession(data.session_id);
     state.analysisResult = data;
     state.targetCol = targetCol;
     state.sensitiveCol = sensitiveCol;
@@ -711,8 +857,11 @@ async function fetchExplanation() {
   const formData = new FormData();
   formData.append('file', state.file);
   try {
-    const res = await fetch(`${API_BASE}/analyze?target_col=${state.targetCol}&sensitive_col=${state.sensitiveCol}&audience=${state.audience}`, { method: 'POST', body: formData });
+    const res = await fetch(`${API_BASE}/analyze?target_col=${state.targetCol}&sensitive_col=${state.sensitiveCol}&audience=${state.audience}`, {
+      method: 'POST', headers: getHeaders(), body: formData
+    });
     const data = await res.json();
+    if (data.session_id) saveSession(data.session_id);
     renderAIExplanation(data.explanation);
   } catch(e) {}
 }
@@ -744,7 +893,7 @@ function renderMetrics(stats) {
     const pct = Math.min(100, (d.val / d.max) * 100);
     return `<div class="m-row"><div class="m-name">${d.name}</div><div class="m-track"><div class="m-fill" style="width:${pct.toFixed(0)}%;background:${d.color}"></div></div><div class="m-val" style="color:${d.color}">${d.fmt(d.val)}</div></div>`;
   }).join('');
-  document.getElementById('metricsAI').textContent = `The Disparate Impact Ratio of ${di.toFixed(3)} ${di < 0.8 ? 'falls below the legal threshold of 0.80, indicating the system violates the EEOC 80% rule' : 'meets the legal threshold of 0.80'}. The Statistical Parity Difference of ${(spd*100).toFixed(1)}% means there is a ${(spd*100).toFixed(1)} percentage point gap in approval rates between the most and least favored groups.`;
+  document.getElementById('metricsAI').textContent = `The Disparate Impact Ratio of ${di.toFixed(3)} ${di < 0.8 ? 'falls below the legal threshold of 0.80, indicating the system violates the EEOC 80% rule' : 'meets the legal threshold of 0.80'}. The Statistical Parity Difference of ${(spd*100).toFixed(1)}% means there is a ${(spd*100).toFixed(1)} percentage point gap in approval rates between the most and least favoured groups.`;
   document.getElementById('metricsAI').classList.remove('pending');
 }
 
@@ -809,10 +958,7 @@ function renderSHAP(shap) {
     const isNeg = f.feature.includes('gap') || f.feature.includes('cost') || f.feature.includes('bmi');
     return `<div class="shap-row">
       <div class="shap-name">${f.feature}${isProxy ? '<span class="shap-proxy">⚠ proxy</span>' : ''}</div>
-      <div class="shap-track">
-        <div class="shap-zero"></div>
-        ${isNeg ? `<div class="shap-neg" style="width:${pct}%"></div>` : `<div class="shap-pos" style="width:${pct}%"></div>`}
-      </div>
+      <div class="shap-track"><div class="shap-zero"></div>${isNeg ? `<div class="shap-neg" style="width:${pct}%"></div>` : `<div class="shap-pos" style="width:${pct}%"></div>`}</div>
       <div class="shap-val" style="color:${isNeg ? 'var(--accent2)' : 'var(--danger)'}">${isNeg ? '-' : '+'}${f.importance.toFixed(3)}</div>
     </div>`;
   }).join('');
@@ -845,14 +991,11 @@ function renderIntersect(stats, intersectionality) {
     document.getElementById('intersectBadge').textContent = `${col1} × ${col2}`;
     const hdr = `<div class="hmap-header"><div class="hmap-col-lbl" style="min-width:100px;flex:0"></div>${col2_values.map(c => `<div class="hmap-col-lbl">${c}</div>`).join('')}</div>`;
     const rows = col1_values.map(r => `
-      <div class="hmap-row">
-        <div class="hmap-lbl">${r}</div>
-        ${col2_values.map(c => {
-          const v = (matrix[r] && matrix[r][c] !== undefined) ? matrix[r][c] : null;
-          const display = v !== null ? `${(v * 100).toFixed(0)}%` : '—';
-          return `<div class="hmap-cell" style="background:${cellBg(v)};color:${cellColor(v)}">${display}</div>`;
-        }).join('')}
-      </div>`).join('');
+      <div class="hmap-row"><div class="hmap-lbl">${r}</div>${col2_values.map(c => {
+        const v = (matrix[r] && matrix[r][c] !== undefined) ? matrix[r][c] : null;
+        const display = v !== null ? `${(v * 100).toFixed(0)}%` : '—';
+        return `<div class="hmap-cell" style="background:${cellBg(v)};color:${cellColor(v)}">${display}</div>`;
+      }).join('')}</div>`).join('');
     document.getElementById('heatmapWrap').innerHTML = hdr + rows;
     const valid = Object.entries(groups).filter(([, v]) => v.positive_rate !== null).sort(([, a], [, b]) => a.positive_rate - b.positive_rate);
     const maxRate = valid.length > 0 ? valid[valid.length - 1][1].positive_rate : 1;
@@ -894,7 +1037,7 @@ function renderIntersect(stats, intersectionality) {
 // ── WHAT-IF ──
 async function loadWhatifFeatures() {
   try {
-    const res = await fetch(`${API_BASE}/whatif/features`);
+    const res = await fetch(`${API_BASE}/whatif/features`, { headers: getHeaders() });
     if (!res.ok) return;
     const data = await res.json();
     renderWiFeatures(data.features);
@@ -923,30 +1066,22 @@ function toggleWiFeature(el) {
 
 function updateWiCount() {
   const n = document.querySelectorAll('.wi-check.selected').length;
-  document.getElementById('wiSelectedCount').textContent = n === 0
-    ? '0 features selected'
-    : `${n} feature${n > 1 ? 's' : ''} selected`;
+  document.getElementById('wiSelectedCount').textContent = n === 0 ? '0 features selected' : `${n} feature${n > 1 ? 's' : ''} selected`;
 }
 
 async function runWhatif() {
   const selected = [...document.querySelectorAll('.wi-check.selected input')].map(el => el.value);
   if (selected.length === 0) { alert('Select at least one feature to drop.'); return; }
-
   const btn = document.getElementById('wiRunBtn');
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner"></span> Simulating...';
-
   try {
     const res = await fetch(`${API_BASE}/whatif`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...getHeaders() },
       body: JSON.stringify({ drop_features: selected, audience: state.audience })
     });
-    if (!res.ok) {
-      const err = await res.json();
-      alert(err.detail || 'Simulation failed');
-      return;
-    }
+    if (!res.ok) { const err = await res.json(); alert(err.detail || 'Simulation failed'); return; }
     const data = await res.json();
     renderWiResults(data);
   } catch(e) {
@@ -960,44 +1095,18 @@ async function runWhatif() {
 function renderWiResults(data) {
   const { original, modified, delta, remaining_features, explanation } = data;
   document.getElementById('wiResults').style.display = 'block';
-
-  // Delta cards
   const metrics = [
-    {
-      name: 'Disparate Impact', origVal: original.di, newVal: modified.di, delta: delta.di,
-      fmt: v => v.toFixed(3), higherBetter: true,
-      note: modified.di >= 0.8
-        ? '✓ Now above legal threshold'
-        : delta.di > 0.005 ? `+${delta.di.toFixed(3)} improvement` : delta.di < -0.005 ? `${delta.di.toFixed(3)} regression` : 'No change'
-    },
-    {
-      name: 'Stat. Parity Diff', origVal: original.spd, newVal: modified.spd, delta: -delta.spd,
-      fmt: v => (v * 100).toFixed(1) + '%', higherBetter: false,
-      note: delta.spd > 0.005 ? `−${(delta.spd*100).toFixed(1)}pp gap` : delta.spd < -0.005 ? `+${(Math.abs(delta.spd)*100).toFixed(1)}pp gap` : 'No change'
-    },
-    {
-      name: 'Equalized Odds', origVal: original.eod, newVal: modified.eod, delta: -delta.eod,
-      fmt: v => (v * 100).toFixed(1) + '%', higherBetter: false,
-      note: delta.eod > 0.005 ? `−${(delta.eod*100).toFixed(1)}pp error gap` : delta.eod < -0.005 ? `+${(Math.abs(delta.eod)*100).toFixed(1)}pp error gap` : 'No change'
-    },
+    { name: 'Disparate Impact', origVal: original.di, newVal: modified.di, delta: delta.di, fmt: v => v.toFixed(3), higherBetter: true, note: modified.di >= 0.8 ? '✓ Now above legal threshold' : delta.di > 0.005 ? `+${delta.di.toFixed(3)} improvement` : delta.di < -0.005 ? `${delta.di.toFixed(3)} regression` : 'No change' },
+    { name: 'Stat. Parity Diff', origVal: original.spd, newVal: modified.spd, delta: -delta.spd, fmt: v => (v * 100).toFixed(1) + '%', higherBetter: false, note: delta.spd > 0.005 ? `−${(delta.spd*100).toFixed(1)}pp gap` : delta.spd < -0.005 ? `+${(Math.abs(delta.spd)*100).toFixed(1)}pp gap` : 'No change' },
+    { name: 'Equalized Odds', origVal: original.eod, newVal: modified.eod, delta: -delta.eod, fmt: v => (v * 100).toFixed(1) + '%', higherBetter: false, note: delta.eod > 0.005 ? `−${(delta.eod*100).toFixed(1)}pp error gap` : delta.eod < -0.005 ? `+${(Math.abs(delta.eod)*100).toFixed(1)}pp error gap` : 'No change' },
   ];
-
   document.getElementById('wiDeltaGrid').innerHTML = metrics.map(m => {
     const improved = m.higherBetter ? m.delta > 0.005 : m.delta < -0.005;
     const worsened = m.higherBetter ? m.delta < -0.005 : m.delta > 0.005;
     const cls = improved ? 'better' : worsened ? 'worse' : 'same';
-    return `<div class="wi-delta-card">
-      <div class="wi-delta-metric">${m.name}</div>
-      <div class="wi-delta-row">
-        <div class="wi-delta-before">${m.fmt(m.origVal)}</div>
-        <div class="wi-delta-arrow">→</div>
-        <div class="wi-delta-after ${cls}">${m.fmt(m.newVal)}</div>
-      </div>
-      <div class="wi-delta-change ${cls}">${m.note}</div>
-    </div>`;
+    return `<div class="wi-delta-card"><div class="wi-delta-metric">${m.name}</div><div class="wi-delta-row"><div class="wi-delta-before">${m.fmt(m.origVal)}</div><div class="wi-delta-arrow">→</div><div class="wi-delta-after ${cls}">${m.fmt(m.newVal)}</div></div><div class="wi-delta-change ${cls}">${m.note}</div></div>`;
   }).join('');
 
-  // Radar charts
   function severityScore(s) { return s === 'low' ? 90 : s === 'medium' ? 55 : 20; }
   const radarLabels = ['Disp. Impact', 'Parity', 'Equal Odds', 'Severity'];
   const beforeVals = [Math.round(original.di * 100), Math.round((1 - original.spd) * 100), Math.round((1 - original.eod) * 100), severityScore(original.severity)];
@@ -1006,40 +1115,24 @@ function renderWiResults(data) {
   function makeRadar(canvasId, vals, color) {
     return new Chart(document.getElementById(canvasId), {
       type: 'radar',
-      data: {
-        labels: radarLabels,
-        datasets: [{ label: '', data: vals, borderColor: color, backgroundColor: color + '14', pointBackgroundColor: color }]
-      },
-      options: {
-        responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
-        scales: { r: { min: 0, max: 100, ticks: { display: false }, grid: { color: 'rgba(255,255,255,0.06)' }, pointLabels: { color: '#6868a0', font: { size: 11, family: 'IBM Plex Mono' } }, angleLines: { color: 'rgba(255,255,255,0.04)' } } }
-      }
+      data: { labels: radarLabels, datasets: [{ label: '', data: vals, borderColor: color, backgroundColor: color + '14', pointBackgroundColor: color }] },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { r: { min: 0, max: 100, ticks: { display: false }, grid: { color: 'rgba(255,255,255,0.06)' }, pointLabels: { color: '#6868a0', font: { size: 11, family: 'IBM Plex Mono' } }, angleLines: { color: 'rgba(255,255,255,0.04)' } } } }
     });
   }
-
   if (state.charts.wiBefore) state.charts.wiBefore.destroy();
   if (state.charts.wiAfter)  state.charts.wiAfter.destroy();
   state.charts.wiBefore = makeRadar('wiBeforeChart', beforeVals, '#ff4d6d');
   state.charts.wiAfter  = makeRadar('wiAfterChart',  afterVals,  '#40d98b');
 
-  // Remaining features list
   document.getElementById('wiRemainingBadge').textContent = remaining_features.length + ' remaining';
-  document.getElementById('wiRemainingList').innerHTML = remaining_features
-    .map(f => `<span style="display:inline-block;margin-right:18px;padding:3px 0;color:var(--text);">${f}</span>`)
-    .join('');
-
-  // Gemini explanation
+  document.getElementById('wiRemainingList').innerHTML = remaining_features.map(f => `<span style="display:inline-block;margin-right:18px;padding:3px 0;color:var(--text);">${f}</span>`).join('');
   const exEl = document.getElementById('wiExplanation');
   exEl.classList.remove('pending');
   exEl.textContent = explanation || 'No explanation returned.';
 }
 
 function clearWhatif() {
-  document.querySelectorAll('.wi-check').forEach(el => {
-    el.classList.remove('selected');
-    el.querySelector('input').checked = false;
-  });
+  document.querySelectorAll('.wi-check').forEach(el => { el.classList.remove('selected'); el.querySelector('input').checked = false; });
   updateWiCount();
   document.getElementById('wiResults').style.display = 'none';
 }
@@ -1048,47 +1141,26 @@ function clearWhatif() {
 function renderRemediation(d) {
   const stats = d.stats;
   const fixes = d.fixes || [];
-  const steps = fixes.map(fix => ({ title: fix, desc: '', impact: '' }));
-  document.getElementById('remedBadge').textContent = steps.length + ' actions';
-  document.getElementById('remedSteps').innerHTML = steps.length > 0
-    ? steps.map((step, i) => `
-      <div class="remed-step">
-        <div class="step-n">${i + 1}</div>
-        <div class="step-body">
-          <div class="step-title">${step.title}</div>
-          ${step.desc ? `<div class="step-desc">${step.desc}</div>` : ''}
-          ${step.impact ? `<span class="step-impact">${step.impact}</span>` : ''}
-        </div>
-      </div>`).join('')
+  document.getElementById('remedBadge').textContent = fixes.length + ' actions';
+  document.getElementById('remedSteps').innerHTML = fixes.length > 0
+    ? fixes.map((fix, i) => `<div class="remed-step"><div class="step-n">${i + 1}</div><div class="step-body"><div class="step-title">${fix}</div></div></div>`).join('')
     : '<div style="color:var(--muted);font-size:13px;padding:16px 0;">No remediation steps available. Run analysis first.</div>';
-
   const m = stats;
   const beforeVals = [Math.round(m.di * 100), Math.round((1 - m.spd) * 100), Math.round((1 - m.spd * 0.85) * 100), Math.round(Math.max(50, (1 - m.spd * 0.4)) * 100)];
   const afterVals = beforeVals.map((v, i) => Math.min(100, v + [18, 16, 22, 7][i]));
   const labels = ['Disp. impact', 'Parity', 'Equal odds', 'Calibration'];
-
   if (state.charts.before) state.charts.before.destroy();
   if (state.charts.after) state.charts.after.destroy();
-
   const radarOpts = {
     type: 'radar',
-    data: {
-      labels,
-      datasets: [
-        { label: 'Before', data: beforeVals, borderColor: '#ff4d6d', backgroundColor: 'rgba(255,77,109,0.08)', pointBackgroundColor: '#ff4d6d' },
-        { label: 'After', data: afterVals, borderColor: '#40d98b', backgroundColor: 'rgba(64,217,139,0.08)', pointBackgroundColor: '#40d98b', borderDash: [4, 3] }
-      ]
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
-      scales: { r: { min: 0, max: 100, ticks: { display: false }, grid: { color: 'rgba(255,255,255,0.06)' }, pointLabels: { color: '#6868a0', font: { size: 11, family: 'IBM Plex Mono' } }, angleLines: { color: 'rgba(255,255,255,0.04)' } } }
-    }
+    data: { labels, datasets: [
+      { label: 'Before', data: beforeVals, borderColor: '#ff4d6d', backgroundColor: 'rgba(255,77,109,0.08)', pointBackgroundColor: '#ff4d6d' },
+      { label: 'After', data: afterVals, borderColor: '#40d98b', backgroundColor: 'rgba(64,217,139,0.08)', pointBackgroundColor: '#40d98b', borderDash: [4, 3] }
+    ]},
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { r: { min: 0, max: 100, ticks: { display: false }, grid: { color: 'rgba(255,255,255,0.06)' }, pointLabels: { color: '#6868a0', font: { size: 11, family: 'IBM Plex Mono' } }, angleLines: { color: 'rgba(255,255,255,0.04)' } } } }
   };
-
   state.charts.before = new Chart(document.getElementById('beforeChart'), JSON.parse(JSON.stringify(radarOpts)));
   state.charts.after  = new Chart(document.getElementById('afterChart'),  JSON.parse(JSON.stringify(radarOpts)));
-
   document.getElementById('remedAI').textContent = fixes.length > 0 ? fixes.join(' ') : 'No remediation suggestions available.';
   document.getElementById('remedAI').classList.remove('pending');
 }
@@ -1105,14 +1177,13 @@ function renderReport(stats) {
     ['Status', isBiased ? '<span style="color:var(--danger)">Non-compliant</span>' : '<span style="color:var(--success)">Compliant</span>'],
     ['Severity', (stats.severity || 'unknown').toUpperCase()],
   ].map(([k, v]) => `<div><div class="report-meta-k">${k}</div><div style="margin-top:2px;">${v}</div></div>`).join('');
-
   const regsBreached = isBiased ? 'EEOC 80% rule, EU AI Act Art. 10' : 'None';
   document.getElementById('reportBody').innerHTML = `
     <div style="font-family:var(--mono);font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:12px;">Key findings</div>
     ${[
       `Disparate Impact Ratio: <strong>${stats.di.toFixed(3)}</strong> — ${stats.di < 0.8 ? '<span style="color:var(--danger)">violates the EEOC 80% rule</span>' : '<span style="color:var(--success)">compliant</span>'}`,
       `Statistical Parity Difference: <strong>${(stats.spd * 100).toFixed(1)}%</strong> — ${stats.spd > 0.2 ? '<span style="color:var(--danger)">critical disparity</span>' : '<span style="color:var(--warn)">moderate disparity</span>'}`,
-      `Groups analyzed: <strong>${Object.keys(stats.group_stats).join(', ')}</strong>`,
+      `Groups analysed: <strong>${Object.keys(stats.group_stats).join(', ')}</strong>`,
       `Bias detected: <strong>${stats.bias_detected ? 'Yes' : 'No'}</strong>`,
       `Regulations breached: <strong>${regsBreached}</strong>`,
     ].map(f => `<div style="padding:10px 0;border-bottom:1px solid var(--border);font-size:13px;">${f}</div>`).join('')}
@@ -1127,32 +1198,20 @@ function copyReport() {
 
 // ── PDF EXPORT ──
 async function exportPDF() {
-  if (!state.analysisResult) {
-    alert('Run an analysis first before exporting.');
-    return;
-  }
-
+  if (!state.analysisResult) { alert('Run an analysis first before exporting.'); return; }
   const btn = document.getElementById('pdfBtn');
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner"></span> Generating PDF...';
-
   try {
     const d = state.analysisResult;
     const stats = d.stats;
-
-    // Collect what-if data if a simulation was run
     const wiResults = document.getElementById('wiResults');
     let whatif = null;
     if (wiResults && wiResults.style.display !== 'none') {
       const dropped = [...document.querySelectorAll('.wi-check.selected input')].map(el => el.value);
-      // Read the rendered delta cards to reconstruct whatif payload
       whatif = {
         dropped_features: dropped,
-        original: {
-          di:  stats.di,
-          spd: stats.spd,
-          eod: stats.eod ?? stats.spd * 0.85
-        },
+        original: { di: stats.di, spd: stats.spd, eod: stats.eod ?? stats.spd * 0.85 },
         simulated: {
           di:  parseFloat(document.querySelector('#wiDeltaGrid .wi-delta-after')?.textContent) || stats.di,
           spd: parseFloat(document.querySelectorAll('#wiDeltaGrid .wi-delta-after')[1]?.textContent) / 100 || stats.spd,
@@ -1160,43 +1219,34 @@ async function exportPDF() {
         }
       };
     }
-
     const payload = {
-      dataset:           state.file ? state.file.name : state.domain + '-demo.csv',
-      target_col:        state.targetCol  || 'outcome',
-      sensitive_col:     state.sensitiveCol || 'group',
-      audience:          state.audience,
-      group_stats:       stats.group_stats,
-      spd:               stats.spd,
-      di:                stats.di,
-      eod:               stats.eod ?? stats.spd * 0.85,
-      severity:          stats.severity,
-      bias_detected:     stats.bias_detected,
-      shap_features:     d.shap?.top_features ?? [],
-      explanation:       d.explanation ?? '',
-      whatif:            whatif,
+      dataset: state.file ? state.file.name : state.domain + '-demo.csv',
+      target_col: state.targetCol || 'outcome',
+      sensitive_col: state.sensitiveCol || 'group',
+      audience: state.audience,
+      group_stats: stats.group_stats,
+      spd: stats.spd, di: stats.di,
+      eod: stats.eod ?? stats.spd * 0.85,
+      severity: stats.severity,
+      bias_detected: stats.bias_detected,
+      shap_features: d.shap?.top_features ?? [],
+      explanation: d.explanation ?? '',
+      whatif,
       remediation_steps: d.fixes ?? [],
     };
-
     const res = await fetch('/export-pdf', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
-
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.detail || 'PDF generation failed');
-    }
-
+    if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.detail || 'PDF generation failed'); }
     const blob = await res.blob();
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement('a');
-    a.href     = url;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
     a.download = `equilens_audit_${payload.sensitive_col}_${new Date().toISOString().slice(0,10)}.pdf`;
     a.click();
     URL.revokeObjectURL(url);
-
   } catch (err) {
     alert('PDF export failed: ' + err.message);
   } finally {
@@ -1204,9 +1254,6 @@ async function exportPDF() {
     btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> Download PDF';
   }
 }
-
-// ── INIT ──
-switchDomain('hiring', document.querySelector('.pill-btn.active'));
 </script>
 </body>
 </html>

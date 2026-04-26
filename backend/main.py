@@ -1,9 +1,11 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException
+import os
+import uuid
+from fastapi import FastAPI, UploadFile, File, HTTPException, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 import pandas as pd
-from typing import List
+from typing import List, Optional
 from fastapi.responses import Response
 from pdf_exporter import generate_audit_pdf
 
@@ -18,13 +20,19 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
     allow_methods=["*"],
-    allow_headers=["*"],
+    allow_headers=["*", "X-Session-Id"],
 )
 
-# ─── In-memory session cache ───────────────────────────────────────────────────
-# Stores the last uploaded dataset so /whatif doesn't require re-uploading.
-# Single-user / demo scope — fine for GDG judging context.
+# ─── Multi-user session cache ──────────────────────────────────────────────────
+# Each browser gets a unique session ID so concurrent judges don't clash.
 session_cache: dict = {}
+MAX_SESSIONS = 100
+
+
+def _evict_oldest():
+    if len(session_cache) >= MAX_SESSIONS:
+        oldest = next(iter(session_cache))
+        del session_cache[oldest]
 
 
 # ─── Pydantic models ──────────────────────────────────────────────────────────
@@ -43,12 +51,18 @@ async def analyze(
     sensitive_col: str = "",
     sensitive_col_2: str = "",
     audience: str = "ngo",
+    x_session_id: Optional[str] = Header(default=None),
 ):
+    session_id = x_session_id or str(uuid.uuid4())
+    _evict_oldest()
+
     df = pd.read_csv(file.file)
 
-    session_cache["df"] = df
-    session_cache["target_col"] = target_col
-    session_cache["sensitive_col"] = sensitive_col
+    session_cache[session_id] = {
+        "df": df,
+        "target_col": target_col,
+        "sensitive_col": sensitive_col,
+    }
 
     stats = analyze_bias(df, target_col, sensitive_col)
     model, X_train, X_test, y_test, curves, y_pred, y_prob, sensitive_test = train_and_evaluate(
@@ -62,7 +76,6 @@ async def analyze(
 
     intersectionality = None
     if sensitive_col_2 and sensitive_col_2 != sensitive_col and sensitive_col_2 in df.columns:
-        
         intersectionality = compute_intersectionality(df, target_col, sensitive_col, sensitive_col_2)
 
     try:
@@ -80,6 +93,7 @@ async def analyze(
         ]
 
     return {
+        "session_id": session_id,
         "stats": stats,
         "shap": shap_data,
         "explanation": explanation,
@@ -87,41 +101,43 @@ async def analyze(
         "curves": curves,
         "intersectionality": intersectionality,
     }
+
+
 # ─── /whatif/features ─────────────────────────────────────────────────────────
-# Defined BEFORE /whatif POST to avoid FastAPI route shadowing.
 
 @app.get("/whatif/features")
-async def whatif_features():
-    if "df" not in session_cache:
+async def whatif_features(x_session_id: Optional[str] = Header(default=None)):
+    if not x_session_id or x_session_id not in session_cache:
         raise HTTPException(
             status_code=400,
             detail="No dataset in cache. Run /analyze first."
         )
-    df = session_cache["df"]
-    target_col = session_cache["target_col"]
-    sensitive_col = session_cache["sensitive_col"]
-    features = [
-        c for c in df.columns
-        if c not in [target_col, sensitive_col]
-    ]
+    session = session_cache[x_session_id]
+    df = session["df"]
+    target_col = session["target_col"]
+    sensitive_col = session["sensitive_col"]
+    features = [c for c in df.columns if c not in [target_col, sensitive_col]]
     return {"features": features}
 
 
 # ─── /whatif ──────────────────────────────────────────────────────────────────
 
 @app.post("/whatif")
-async def whatif(body: WhatIfRequest):
-    if "df" not in session_cache:
+async def whatif(
+    body: WhatIfRequest,
+    x_session_id: Optional[str] = Header(default=None),
+):
+    if not x_session_id or x_session_id not in session_cache:
         raise HTTPException(
             status_code=400,
             detail="No dataset in cache. Run /analyze first to upload a CSV."
         )
 
-    df = session_cache["df"]
-    target_col = session_cache["target_col"]
-    sensitive_col = session_cache["sensitive_col"]
+    session = session_cache[x_session_id]
+    df = session["df"]
+    target_col = session["target_col"]
+    sensitive_col = session["sensitive_col"]
 
-    # Validate requested features exist
     all_features = [c for c in df.columns if c != target_col]
     invalid = [f for f in body.drop_features if f not in all_features]
     if invalid:
@@ -130,7 +146,7 @@ async def whatif(body: WhatIfRequest):
             detail=f"Features not found in dataset: {invalid}. Available: {all_features}"
         )
 
-    # ── Original metrics — raw label approval rates + model EOD ───────────────
+    # ── Original metrics ───────────────────────────────────────────────────────
     original_stats = analyze_bias(df, target_col, sensitive_col)
     _, X_train_orig, X_test_orig, y_test_orig, _, y_pred_orig, _, sensitive_test_orig = train_and_evaluate(
         df, target_col, sensitive_col
@@ -145,9 +161,6 @@ async def whatif(body: WhatIfRequest):
         df_modified, target_col, sensitive_col
     )
 
-    # Compute SPD/DI from MODEL PREDICTIONS (not raw labels).
-    # Dropping features only affects what the model decides, not the ground-truth
-    # labels in the CSV — so we must measure the model's output per group.
     pred_df = pd.DataFrame({
         sensitive_col: sensitive_test_mod.values,
         target_col: y_pred_mod,
@@ -159,14 +172,12 @@ async def whatif(body: WhatIfRequest):
 
     shap_modified = get_shap_values(model_mod, X_train_mod, X_test_mod)
 
-    # ── Delta — positive always means improvement ──────────────────────────────
     delta = {
-        "spd": round(original_stats["spd"] - modified_stats["spd"], 4),  # lower is better
-        "di":  round(modified_stats["di"]  - original_stats["di"],  4),  # higher is better
-        "eod": round(original_stats["eod"] - modified_stats["eod"], 4),  # lower is better
+        "spd": round(original_stats["spd"] - modified_stats["spd"], 4),
+        "di":  round(modified_stats["di"]  - original_stats["di"],  4),
+        "eod": round(original_stats["eod"] - modified_stats["eod"], 4),
     }
 
-    # ── Gemini explanation ─────────────────────────────────────────────────────
     try:
         whatif_explanation = explain_whatif(
             original=original_stats,
@@ -238,6 +249,9 @@ def _fallback_whatif_explanation(original, modified, delta, dropped):
         f"{outcome} *"
     )
 
+
+# ─── PDF export ───────────────────────────────────────────────────────────────
+
 @app.post("/export-pdf")
 async def export_pdf(payload: dict):
     pdf_bytes = generate_audit_pdf(payload)
@@ -248,7 +262,12 @@ async def export_pdf(payload: dict):
     )
 
 
-# ─── Static frontend — mount LAST, after all API routes ───────────────────────
-import os
+# ─── Sample data ──────────────────────────────────────────────────────────────
+sample_dir = "./sample_data" if os.path.exists("./sample_data") else "../sample_data"
+if os.path.exists(sample_dir):
+    app.mount("/sample_data", StaticFiles(directory=sample_dir), name="sample_data")
+
+
+# ─── Static frontend — mount LAST ─────────────────────────────────────────────
 frontend_dir = "../frontend" if os.path.exists("../frontend") else "./frontend"
 app.mount("/", StaticFiles(directory=frontend_dir, html=True), name="frontend")
