@@ -15,7 +15,6 @@ from analyzer import analyze_bias, compute_intersectionality, compute_eod
 from trainer import train_and_evaluate, prepare_features
 from explainer import get_shap_values
 from gemini_client import explain_results, suggest_fixes, explain_whatif
-#imports are done just a shitty comment broooo
 app = FastAPI(title="EquiLens AI")
 
 app.add_middleware(
