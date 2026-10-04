@@ -1,12 +1,11 @@
 # EquiLens AI
 ### AI-powered bias detection for non-technical users
 
-[![Live Demo](https://img.shields.io/badge/Live%20Demo-Render-46E3B7?style=flat-square)](https://solution-challenge-h2pw.onrender.com/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-6c63ff?style=flat-square)](LICENSE)
-[![Python](https://img.shields.io/badge/Python-3.12-blue?style=flat-square)](https://python.org)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.135-009688?style=flat-square)](https://fastapi.tiangolo.com)
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-Render-46E3B7?style=flat-square)](https://equilens-ai.onrender.com/)
+[![Python](https://img.shields.io/badge/Python-3.11-blue?style=flat-square)](https://python.org)
+[![FastAPI](https://img.shields.io/badge/Backend-FastAPI-009688?style=flat-square)](https://fastapi.tiangolo.com)
 
-> "Amazon's hiring AI downgraded women's CVs. COMPAS flagged Black defendants at 2× the rate. These failures could have been caught. EquiLens catches them."
+> Amazon scrapped an experimental hiring tool after it was found to penalise CVs that mentioned women's activities. ProPublica reported that the COMPAS risk tool wrongly labelled Black defendants who did not reoffend as high risk at nearly twice the rate of white defendants. Bias like this can be measured before a system is deployed; EquiLens is built to help with that.
 
 ---
 
@@ -34,9 +33,19 @@ EquiLens gives any organization — NGO, school, small business — the ability 
 
 ---
 
-## Real User Story
+## Screenshots
 
-Priya runs an NGO in Pune distributing scholarships. She uploads her dataset, selects gender as the sensitive attribute and caste as the intersect. She discovers that lower-caste girls are approved at **8%** — far below the 34% rate for upper-caste boys. A Disparate Impact of **0.24**, well below the legal threshold of 0.8. Gemini explains this in plain language and suggests fixes. Priya downloads the audit report and shares it with her board. **All in under 5 minutes.**
+![EquiLens UI, screenshot 1](docs/image1.png)
+![EquiLens UI, screenshot 2](docs/image2.png)
+![EquiLens UI, screenshot 3](docs/image3.png)
+![EquiLens UI, screenshot 4](docs/image4.png)
+![EquiLens UI, screenshot 5](docs/image5.png)
+
+---
+
+## Example Scenario
+
+Imagine Priya, who runs an NGO in Pune distributing scholarships. She uploads her dataset, selects gender as the sensitive attribute and caste as the intersect. She discovers that lower-caste girls are approved at **8%** — far below the 34% rate for upper-caste boys. A Disparate Impact of **0.24**, well below the legal threshold of 0.8. Gemini explains this in plain language and suggests fixes. Priya downloads the audit report and shares it with her board.
 
 ---
 
@@ -44,7 +53,7 @@ Priya runs an NGO in Pune distributing scholarships. She uploads her dataset, se
 
 | Layer | Technology |
 |-------|-----------|
-| Backend | FastAPI (Python 3.12) |
+| Backend | FastAPI (Python 3.11) |
 | Bias Metrics | SPD, Disparate Impact, Equalized Odds |
 | Explainability | SHAP (TreeExplainer) |
 | AI Layer | Gemini 2.5 Flash |
@@ -66,7 +75,7 @@ Priya runs an NGO in Pune distributing scholarships. She uploads her dataset, se
 
 ## What Makes EquiLens Different
 
-Every existing tool — IBM AI Fairness 360, Fairlearn, Aequitas — outputs p-values and confusion matrices that only data scientists can interpret. EquiLens translates those results into plain language tuned to who's reading:
+Toolkits such as IBM AI Fairness 360, Fairlearn and Aequitas are built mainly for data scientists. EquiLens adds a Gemini-generated plain-language layer on top of its metrics, tuned to who's reading:
 
 | Audience | Output |
 |----------|--------|
@@ -145,9 +154,3 @@ Open `http://127.0.0.1:8000` in your browser.
 - Loading skeletons instead of spinner
 - Inline error messages instead of `alert()` popups
 - Environment variable management for production (`.env` → Cloud Secrets)
-
----
-
-## License
-
-MIT
