@@ -1875,9 +1875,9 @@ async function runAnalysis() {
   const targetCol = document.getElementById('targetSel').value;
   const sensitiveCol = document.getElementById('sensitiveSel').value;
   if (!state.file && !targetCol) { switchDomain(state.domain, document.querySelector('.pill-btn.active')); return; }
-  if (!state.file) { alert('Please upload a CSV file first.'); return; }
-  if (!targetCol) { alert('Please select a target column.'); return; }
-  if (!sensitiveCol) { alert('Please select a sensitive attribute column.'); return; }
+  if (!state.file) { showError('Please upload a CSV file first.'); return; }
+  if (!targetCol) { showError('Please select a target column.'); return; }
+  if (!sensitiveCol) { showError('Please select a sensitive attribute column.'); return; }
 
   setAnalyzeLoading(true);
 
@@ -2215,7 +2215,7 @@ function updateWiCount() {
 
 async function runWhatif() {
   const selected = [...document.querySelectorAll('.wi-check.selected input')].map(el => el.value);
-  if (selected.length === 0) { alert('Select at least one feature to drop.'); return; }
+  if (selected.length === 0) { showError('Select at least one feature to drop.'); return; }
   const btn = document.getElementById('wiRunBtn');
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner"></span> Simulating...';
@@ -2346,7 +2346,7 @@ function copyReport() {
 
 // ── PDF EXPORT ──
 async function exportPDF() {
-  if (!state.analysisResult) { alert('Run an analysis first before exporting.'); return; }
+  if (!state.analysisResult) { showError('Run an analysis first before exporting.'); return; }
   const btn = document.getElementById('pdfBtn');
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner"></span> Generating PDF...';
@@ -2396,7 +2396,7 @@ async function exportPDF() {
     a.click();
     URL.revokeObjectURL(url);
   } catch (err) {
-    alert('PDF export failed: ' + err.message);
+    showError('PDF export failed: ' + err.message);
   } finally {
     btn.disabled = false;
     btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> Download PDF';
