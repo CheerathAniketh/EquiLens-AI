@@ -146,11 +146,11 @@ Open `http://127.0.0.1:8000` in your browser.
 
 ---
 
-## What's Pending
+## Known limitations
 
-- Audience toggle re-fetches explanation without re-uploading CSV
-- Intersectionality: sample size tooltip on sparse cells
-- Mobile responsive layout
-- Loading skeletons instead of spinner
-- Inline error messages instead of `alert()` popups
-- Environment variable management for production (`.env` → Cloud Secrets)
+- Sparse cells in the intersectional heatmap (fewer than 10 samples) are left blank, with no tooltip explaining why.
+- The layout has one responsive breakpoint (900px) and has not been tested on phones.
+- The loading state is a spinner, not skeleton placeholders.
+- If the backend call fails, the page falls back to demo data and shows only a short-lived error notice.
+- The Gemini API key is read from the host's environment variables; there is no secrets manager.
+
